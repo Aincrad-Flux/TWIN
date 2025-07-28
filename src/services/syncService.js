@@ -13,7 +13,7 @@ const logger = require('../config/logger');
 class SyncService {
 
   async handleWebhook(webhookEvent, payload) {
-    logger.info(`Traitement de l'événement: ${webhookEvent}`);
+    logger.info(`Processing event: ${webhookEvent}`);
 
     switch (webhookEvent) {
       case 'jira:issue_created':
@@ -23,29 +23,29 @@ class SyncService {
       case 'comment_created':
         return await this.handleCommentCreated(payload);
       default:
-        logger.debug(`Événement ignoré: ${webhookEvent}`);
+        logger.debug(`Event ignored: ${webhookEvent}`);
     }
   }
 
   async handleIssueCreated(payload) {
-    // TODO: Logique de création d'issue
-    logger.info('Création d\'issue détectée', {
+    // TODO: Issue creation logic
+    logger.info('Issue creation detected', {
       key: payload.issue?.key,
       summary: payload.issue?.fields?.summary
     });
   }
 
   async handleIssueUpdated(payload) {
-    // TODO: Logique de mise à jour d'issue
-    logger.info('Mise à jour d\'issue détectée', {
+    // TODO: Issue update logic
+    logger.info('Issue update detected', {
       key: payload.issue?.key,
       changelog: payload.changelog
     });
   }
 
   async handleCommentCreated(payload) {
-    // TODO: Logique de commentaire
-    logger.info('Commentaire créé', {
+    // TODO: Comment logic
+    logger.info('Comment created', {
       key: payload.issue?.key,
       comment: payload.comment?.body
     });

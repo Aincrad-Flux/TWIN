@@ -19,16 +19,16 @@ const logger = require('./config/logger');
 
 const app = express();
 
-// Middlewares de sécurité et utilitaires
+// Security and utility middlewares
 app.use(helmet());
 app.use(cors());
 app.use(morgan('combined', { stream: { write: message => logger.info(message.trim()) } }));
-app.use(express.json({ limit: '10mb' })); // Pour les gros payloads Jira
+app.use(express.json({ limit: '10mb' })); // For large Jira payloads
 
 // Routes
 app.use('/webhooks', webhookRoutes);
 
-// Route de santé
+// Health check route
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -37,19 +37,19 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Gestion des erreurs globales
+// Global error handling
 app.use((err, req, res, next) => {
-  logger.error('Erreur non gérée:', err);
+  logger.error('Unhandled error:', err);
   res.status(500).json({
-    error: 'Erreur interne du serveur',
+    error: 'Internal server error',
     timestamp: new Date().toISOString()
   });
 });
 
-// Route 404
+// 404 route
 app.use('*', (req, res) => {
   res.status(404).json({
-    error: 'Route non trouvée',
+    error: 'Route not found',
     timestamp: new Date().toISOString()
   });
 });

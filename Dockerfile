@@ -2,23 +2,23 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copier package.json et installer les dépendances
+# Copy package.json and install dependencies
 COPY package*.json ./
 RUN npm ci --only=production
 
-# Copier le code source
+# Copy source code
 COPY src/ ./src/
 
-# Créer le dossier logs
+# Create logs directory
 RUN mkdir -p logs
 
-# Exposer le port
+# Expose port
 EXPOSE 3000
 
-# Utilisateur non-root pour la sécurité
+# Non-root user for security
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S twin -u 1001
 USER twin
 
-# Démarrer l'application
+# Start application
 CMD ["npm", "start"]

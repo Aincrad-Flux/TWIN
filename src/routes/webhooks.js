@@ -13,28 +13,28 @@ const router = express.Router();
 const logger = require('../config/logger');
 const syncService = require('../services/syncService');
 
-// Middleware pour valider les webhooks Jira
+// Middleware to validate Jira webhooks
 const validateJiraWebhook = (req, res, next) => {
-  // TODO: Ajouter validation IP, signature, etc.
+  // TODO: Add IP validation, signature, etc.
   const userAgent = req.get('User-Agent');
   if (!userAgent || !userAgent.includes('Atlassian')) {
-    logger.warn(`Webhook suspect reçu de ${req.ip}`);
+    logger.warn(`Suspicious webhook received from ${req.ip}`);
   }
   next();
 };
 
-// Endpoint principal pour les webhooks Jira
+// Main endpoint for Jira webhooks
 router.post('/jira', validateJiraWebhook, async (req, res) => {
   try {
     const { webhookEvent, issue } = req.body;
 
-    logger.info(`Webhook reçu: ${webhookEvent}`, {
+    logger.info(`Webhook received: ${webhookEvent}`, {
       issueKey: issue?.key,
       issueType: issue?.fields?.issuetype?.name,
       status: issue?.fields?.status?.name
     });
 
-    // Traitement asynchrone de la synchronisation
+    // Asynchronous processing of synchronization
     await syncService.handleWebhook(webhookEvent, req.body);
 
     res.status(200).json({
@@ -43,18 +43,18 @@ router.post('/jira', validateJiraWebhook, async (req, res) => {
     });
 
   } catch (error) {
-    logger.error('Erreur lors du traitement du webhook:', error);
+    logger.error('Error processing webhook:', error);
     res.status(500).json({
-      error: 'Erreur lors du traitement',
+      error: 'Processing error',
       timestamp: new Date().toISOString()
     });
   }
 });
 
-// Endpoint de test
+// Test endpoint
 router.get('/test', (req, res) => {
   res.json({
-    message: 'Webhooks T.W.I.N opérationnels',
+    message: 'T.W.I.N Webhooks operational',
     timestamp: new Date().toISOString()
   });
 });
