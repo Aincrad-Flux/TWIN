@@ -1,3 +1,13 @@
+/*
+ * T.W.I.N - Ticket Workflow Integration Network
+ *
+ *   Author : Pandor
+ *   Organization : Aincrad-Flux
+ *
+ *  filename : src/server.js
+ *  description : Server entry point for T.W.I.N application
+*/
+
 const app = require('./app');
 const logger = require('./config/logger');
 

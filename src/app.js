@@ -1,3 +1,13 @@
+/*
+ * T.W.I.N - Ticket Workflow Integration Network
+ *
+ *   Author : Pandor
+ *   Organization : Aincrad-Flux
+ *
+ *  filename : src/app.js
+ *  description : Application Express for handling Jira webhooks and synchronizations
+*/
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

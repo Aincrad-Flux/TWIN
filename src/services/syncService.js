@@ -1,3 +1,13 @@
+/*
+ * T.W.I.N - Ticket Workflow Integration Network
+ *
+ *   Author : Pandor
+ *   Organization : Aincrad-Flux
+ *
+ *  filename : src/services/syncService.js
+ *  description : Service for handling synchronization logic based on webhook events
+*/
+
 const logger = require('../config/logger');
 
 class SyncService {
