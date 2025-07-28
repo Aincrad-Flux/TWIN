@@ -1,0 +1,358 @@
+openapi: 3.0.3
+info:
+  title: T.W.I.N API - Ticket Workflow Integration Network
+  description: |
+    T.W.I.N (Ticket Workflow Integration Network) is a service designed to handle Jira webhooks and synchronize ticket workflows.
+
+    This API provides endpoints for:
+    - Receiving and processing Jira webhooks
+    - Health monitoring
+    - Testing connectivity
+
+    **Author**: Pandor
+    **Organization**: Aincrad-Flux
+  version: 1.0.0
+  contact:
+    name: Aincrad-Flux
+    url: https://github.com/Aincrad-Flux/TWIN
+  license:
+    name: ISC
+    url: https://opensource.org/licenses/ISC
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.twin.example.com
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the current health status of the T.W.I.N service
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "OK"
+                service: "T.W.I.N"
+                timestamp: "2025-07-28T10:30:00.000Z"
+
+  /webhooks/jira:
+    post:
+      summary: Jira webhook endpoint
+      description: |
+        Receives and processes Jira webhooks for issue events.
+
+        Supported webhook events:
+        - `jira:issue_created` - When a new issue is created
+        - `jira:issue_updated` - When an issue is updated
+        - `comment_created` - When a comment is added to an issue
+
+        The endpoint validates the request and processes it asynchronously.
+      tags:
+        - Webhooks
+      security:
+        - JiraWebhook: []
+      requestBody:
+        description: Jira webhook payload
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JiraWebhookPayload'
+            examples:
+              issue_created:
+                summary: Issue Created Event
+                value:
+                  webhookEvent: "jira:issue_created"
+                  timestamp: 1690540800000
+                  issue:
+                    key: "PROJ-123"
+                    fields:
+                      summary: "New bug report"
+                      issuetype:
+                        name: "Bug"
+                      status:
+                        name: "Open"
+                      priority:
+                        name: "High"
+              issue_updated:
+                summary: Issue Updated Event
+                value:
+                  webhookEvent: "jira:issue_updated"
+                  timestamp: 1690540800000
+                  issue:
+                    key: "PROJ-123"
+                    fields:
+                      summary: "Updated bug report"
+                      status:
+                        name: "In Progress"
+                  changelog:
+                    items:
+                      - field: "status"
+                        fromString: "Open"
+                        toString: "In Progress"
+              comment_created:
+                summary: Comment Created Event
+                value:
+                  webhookEvent: "comment_created"
+                  timestamp: 1690540800000
+                  issue:
+                    key: "PROJ-123"
+                  comment:
+                    id: "10001"
+                    body: "This is a new comment"
+                    author:
+                      displayName: "John Doe"
+      responses:
+        '200':
+          description: Webhook successfully received and accepted for processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookResponse'
+              example:
+                status: "accepted"
+                timestamp: "2025-07-28T10:30:00.000Z"
+        '500':
+          description: Internal server error during webhook processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Processing error"
+                timestamp: "2025-07-28T10:30:00.000Z"
+
+  /webhooks/test:
+    get:
+      summary: Test webhook connectivity
+      description: Simple endpoint to test if the webhook service is operational
+      tags:
+        - Webhooks
+        - Health
+      responses:
+        '200':
+          description: Webhook service is operational
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestResponse'
+              example:
+                message: "T.W.I.N Webhooks operational"
+                timestamp: "2025-07-28T10:30:00.000Z"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - timestamp
+      properties:
+        status:
+          type: string
+          description: Health status of the service
+          example: "OK"
+        service:
+          type: string
+          description: Name of the service
+          example: "T.W.I.N"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the health check
+          example: "2025-07-28T10:30:00.000Z"
+
+    WebhookResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+      properties:
+        status:
+          type: string
+          description: Status of webhook processing
+          example: "accepted"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the response
+          example: "2025-07-28T10:30:00.000Z"
+
+    TestResponse:
+      type: object
+      required:
+        - message
+        - timestamp
+      properties:
+        message:
+          type: string
+          description: Test message
+          example: "T.W.I.N Webhooks operational"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the response
+          example: "2025-07-28T10:30:00.000Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - timestamp
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Processing error"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp when the error occurred
+          example: "2025-07-28T10:30:00.000Z"
+
+    JiraWebhookPayload:
+      type: object
+      required:
+        - webhookEvent
+      properties:
+        webhookEvent:
+          type: string
+          description: Type of Jira webhook event
+          enum:
+            - "jira:issue_created"
+            - "jira:issue_updated"
+            - "comment_created"
+          example: "jira:issue_created"
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp of the event
+          example: 1690540800000
+        issue:
+          $ref: '#/components/schemas/JiraIssue'
+        changelog:
+          $ref: '#/components/schemas/JiraChangelog'
+        comment:
+          $ref: '#/components/schemas/JiraComment'
+
+    JiraIssue:
+      type: object
+      properties:
+        key:
+          type: string
+          description: Jira issue key
+          example: "PROJ-123"
+        id:
+          type: string
+          description: Jira issue ID
+          example: "10001"
+        fields:
+          type: object
+          properties:
+            summary:
+              type: string
+              description: Issue summary
+              example: "Bug in user authentication"
+            issuetype:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Bug"
+            status:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "Open"
+            priority:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: "High"
+            assignee:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                  example: "John Doe"
+                emailAddress:
+                  type: string
+                  example: "john.doe@example.com"
+
+    JiraChangelog:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Changed field name
+                example: "status"
+              fromString:
+                type: string
+                description: Previous value
+                example: "Open"
+              toString:
+                type: string
+                description: New value
+                example: "In Progress"
+
+    JiraComment:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Comment ID
+          example: "10001"
+        body:
+          type: string
+          description: Comment content
+          example: "This issue has been resolved"
+        author:
+          type: object
+          properties:
+            displayName:
+              type: string
+              example: "Jane Smith"
+            emailAddress:
+              type: string
+              example: "jane.smith@example.com"
+        created:
+          type: string
+          format: date-time
+          description: Comment creation timestamp
+          example: "2025-07-28T10:30:00.000Z"
+
+  securitySchemes:
+    JiraWebhook:
+      type: apiKey
+      in: header
+      name: User-Agent
+      description: |
+        Jira webhook authentication is validated by checking the User-Agent header.
+        The service expects requests from Atlassian services (User-Agent containing "Atlassian").
+
+tags:
+  - name: Health
+    description: Service health monitoring endpoints
+  - name: Webhooks
+    description: Jira webhook processing endpoints
+
+externalDocs:
+  description: Project Repository
+  url: https://github.com/Aincrad-Flux/TWIN
