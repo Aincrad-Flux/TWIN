@@ -10,8 +10,9 @@ RUN adduser -S twin -u 1001
 COPY package*.json ./
 RUN npm ci
 
-# Copy source code
+# Copy source code and documentation
 COPY src/ ./src/
+COPY doc/ ./doc/
 
 # Create logs directory
 RUN mkdir -p logs

@@ -9,6 +9,7 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./src:/app/src
+      - ./doc:/app/doc
       - ./package.json:/app/package.json
       - ./package-lock.json:/app/package-lock.json
     depends_on:
