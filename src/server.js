@@ -17,4 +17,5 @@ app.listen(PORT, () => {
   logger.info(`🚀 T.W.I.N démarré sur le port ${PORT}`);
   logger.info(`🏥 Health check: http://localhost:${PORT}/health`);
   logger.info(`📨 Webhooks: http://localhost:${PORT}/webhooks`);
+  logger.info(`📚 Documentation API: http://localhost:${PORT}/doc`);
 });
