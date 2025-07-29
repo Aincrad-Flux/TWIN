@@ -8,6 +8,9 @@ services:
       - DB_HOST=postgres
     volumes:
       - ./logs:/app/logs
+      - ./src:/app/src
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
     depends_on:
       - postgres
     restart: unless-stopped
