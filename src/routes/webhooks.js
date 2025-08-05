@@ -55,7 +55,8 @@ router.post('/jira', validateJiraWebhook, async (req, res) => {
 router.get('/test', (req, res) => {
   res.json({
     message: 'T.W.I.N Webhooks operational',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    body: req.body || {}
   });
 });
 
