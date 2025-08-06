@@ -18,6 +18,7 @@ const path = require('path');
 
 const webhookRoutes = require('./routes/webhooks');
 const configRoutes = require('./routes/config');
+const logRoutes = require('./routes/logs');
 const logger = require('./config/logger');
 
 const app = express();
@@ -68,6 +69,7 @@ if (swaggerDocument) {
 // Routes
 app.use('/webhooks', webhookRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/logs', logRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
