@@ -186,6 +186,568 @@ paths:
                 error: "Invalid User-Agent"
                 timestamp: "2025-08-06T10:30:00.000Z"
 
+  # Configuration Management Routes
+  /api/config/config:
+    get:
+      summary: Get application configuration
+      description: Retrieves the current application configuration including environment settings, version, and database configuration.
+      tags:
+        - Configuration
+      security:
+        - AdminApiKey: []
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+              example:
+                status: "success"
+                data:
+                  env: "development"
+                  port: "3000"
+                  version: "1.0.0"
+                  logLevel: "info"
+                  dbHost: "localhost"
+                  dbPort: "5432"
+                  dbName: "twin_db"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/config/environment:
+    get:
+      summary: Get all environment variables
+      description: Retrieves all environment variables except protected ones (like ADMIN_API_KEY).
+      tags:
+        - Configuration
+      security:
+        - AdminApiKey: []
+      responses:
+        '200':
+          description: Environment variables retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvironmentResponse'
+              example:
+                status: "success"
+                data:
+                  NODE_ENV: "development"
+                  PORT: "3000"
+                  LOG_LEVEL: "info"
+                  DB_HOST: "localhost"
+                  DB_PORT: "5432"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    put:
+      summary: Update multiple environment variables
+      description: Updates multiple environment variables at once. Protected variables cannot be modified.
+      tags:
+        - Configuration
+      security:
+        - AdminApiKey: []
+      requestBody:
+        description: Environment variables to update
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+            example:
+              NODE_ENV: "production"
+              LOG_LEVEL: "warn"
+              PORT: "8080"
+      responses:
+        '200':
+          description: Environment variables updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/config/environment/{key}:
+    get:
+      summary: Get specific environment variable
+      description: Retrieves the value of a specific environment variable. Protected variables cannot be retrieved.
+      tags:
+        - Configuration
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: Environment variable key
+          schema:
+            type: string
+          example: "NODE_ENV"
+      responses:
+        '200':
+          description: Environment variable retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvironmentVariableResponse'
+              example:
+                status: "success"
+                data:
+                  key: "NODE_ENV"
+                  value: "development"
+        '404':
+          description: Environment variable not found
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    put:
+      summary: Set specific environment variable
+      description: Sets the value of a specific environment variable. Protected variables cannot be modified.
+      tags:
+        - Configuration
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: Environment variable key
+          schema:
+            type: string
+          example: "LOG_LEVEL"
+      requestBody:
+        description: New value for the environment variable
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - value
+              properties:
+                value:
+                  type: string
+                  description: New value for the environment variable
+            example:
+              value: "debug"
+      responses:
+        '200':
+          description: Environment variable updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvironmentVariableResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      summary: Delete environment variable
+      description: Deletes a specific environment variable. Protected variables cannot be deleted.
+      tags:
+        - Configuration
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: key
+          in: path
+          required: true
+          description: Environment variable key
+          schema:
+            type: string
+          example: "TEMP_VAR"
+      responses:
+        '200':
+          description: Environment variable deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Environment variable not found
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/config/protected-variables:
+    get:
+      summary: Get list of protected variables
+      description: Returns the list of environment variables that are protected and cannot be retrieved or modified via API.
+      tags:
+        - Configuration
+      security:
+        - AdminApiKey: []
+      responses:
+        '200':
+          description: Protected variables list retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      protectedVariables:
+                        type: array
+                        items:
+                          type: string
+                        example: ["ADMIN_API_KEY"]
+                      message:
+                        type: string
+                        example: "These variables cannot be retrieved or modified via API"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # Logs Management Routes
+  /api/logs/logs:
+    get:
+      summary: Get list of all log files
+      description: Retrieves a list of all available log files with their metadata including size, modification date, and type.
+      tags:
+        - Logs
+      security:
+        - AdminApiKey: []
+      responses:
+        '200':
+          description: Log files list retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogFilesResponse'
+              example:
+                status: "success"
+                data:
+                  files:
+                    - name: "combined.log"
+                      size: 15420
+                      sizeFormatted: "15.06 KB"
+                      modified: "2025-08-06T10:30:00.000Z"
+                      type: "log"
+                    - name: "2025-08-06/webhook-test-2025-08-06T12-30-40-375Z.json"
+                      size: 2048
+                      sizeFormatted: "2.00 KB"
+                      modified: "2025-08-06T12:30:40.000Z"
+                      type: "webhook"
+                  total: 15
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/logs/logs/stats:
+    get:
+      summary: Get log statistics
+      description: Retrieves statistics about log files including total count, size, and breakdown by type.
+      tags:
+        - Logs
+      security:
+        - AdminApiKey: []
+      responses:
+        '200':
+          description: Log statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogStatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/logs/logs/file/{filename}:
+    get:
+      summary: Get content of specific log file
+      description: Retrieves the content of a specific log file with optional filtering and line limiting.
+      tags:
+        - Logs
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          description: Log file name (can include subdirectories)
+          schema:
+            type: string
+          example: "combined.log"
+        - name: lines
+          in: query
+          description: Number of lines to retrieve
+          schema:
+            type: integer
+          example: 50
+        - name: tail
+          in: query
+          description: Get last N lines instead of first N lines
+          schema:
+            type: boolean
+          example: true
+        - name: filter
+          in: query
+          description: Filter content by keyword
+          schema:
+            type: string
+          example: "webhook"
+      responses:
+        '200':
+          description: Log file content retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogContentResponse'
+        '403':
+          description: Access denied to requested file
+        '404':
+          description: Log file not found
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/logs/logs/errors:
+    get:
+      summary: Get recent error logs
+      description: Retrieves recent error logs from the error.log file.
+      tags:
+        - Logs
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: lines
+          in: query
+          description: Number of recent lines to retrieve
+          schema:
+            type: integer
+            default: 50
+          example: 100
+      responses:
+        '200':
+          description: Error logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogContentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/logs/logs/combined:
+    get:
+      summary: Get recent combined logs
+      description: Retrieves recent combined logs from the combined.log file.
+      tags:
+        - Logs
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: lines
+          in: query
+          description: Number of recent lines to retrieve
+          schema:
+            type: integer
+            default: 100
+          example: 200
+      responses:
+        '200':
+          description: Combined logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogContentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/logs/logs/search:
+    get:
+      summary: Search across log files
+      description: Searches for a specific term across all log files with optional filtering.
+      tags:
+        - Logs
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+          example: "webhook"
+        - name: file
+          in: query
+          description: File pattern to filter search
+          schema:
+            type: string
+          example: "combined"
+        - name: limit
+          in: query
+          description: Maximum number of results
+          schema:
+            type: integer
+            default: 100
+          example: 50
+        - name: case_sensitive
+          in: query
+          description: Case sensitive search
+          schema:
+            type: boolean
+            default: false
+          example: false
+      responses:
+        '200':
+          description: Search completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogSearchResponse'
+        '400':
+          description: Missing required query parameter
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/logs/logs/webhooks/{date}:
+    get:
+      summary: Get webhook logs for specific date
+      description: Retrieves webhook logs for a specific date in YYYY-MM-DD format.
+      tags:
+        - Logs
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: date
+          in: path
+          required: true
+          description: Date in YYYY-MM-DD format
+          schema:
+            type: string
+            pattern: '^\d{4}-\d{2}-\d{2}$'
+          example: "2025-08-06"
+      responses:
+        '200':
+          description: Webhook logs for date retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookLogsResponse'
+        '400':
+          description: Invalid date format
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/logs/logs/webhooks/recent:
+    get:
+      summary: Get recent webhook logs
+      description: Retrieves webhook logs from the last 24 hours.
+      tags:
+        - Logs
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of files to return
+          schema:
+            type: integer
+            default: 10
+          example: 20
+      responses:
+        '200':
+          description: Recent webhook logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookLogsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/logs/logs/cleanup:
+    delete:
+      summary: Clean up old log files
+      description: Deletes log files older than the specified number of days.
+      tags:
+        - Logs
+      security:
+        - AdminApiKey: []
+      parameters:
+        - name: days
+          in: query
+          description: Number of days to keep (delete older files)
+          schema:
+            type: integer
+            default: 30
+          example: 7
+      responses:
+        '200':
+          description: Log cleanup completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CleanupResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
 components:
   schemas:
     HealthResponse:
@@ -275,6 +837,321 @@ components:
           format: date-time
           description: Timestamp when the error occurred
           example: "2025-08-06T10:30:00.000Z"
+
+    SuccessResponse:
+      type: object
+      required:
+        - status
+        - message
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "Operation completed successfully"
+
+    # Configuration Schemas
+    ConfigResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            env:
+              type: string
+              example: "development"
+            port:
+              type: string
+              example: "3000"
+            version:
+              type: string
+              example: "1.0.0"
+            logLevel:
+              type: string
+              example: "info"
+            dbHost:
+              type: string
+              example: "localhost"
+            dbPort:
+              type: string
+              example: "5432"
+            dbName:
+              type: string
+              example: "twin_db"
+
+    EnvironmentResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            NODE_ENV: "development"
+            PORT: "3000"
+            LOG_LEVEL: "info"
+
+    EnvironmentVariableResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            key:
+              type: string
+              example: "NODE_ENV"
+            value:
+              type: string
+              example: "development"
+
+    UpdateResponse:
+      type: object
+      required:
+        - status
+        - message
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "Environment variables updated successfully"
+        data:
+          type: object
+          properties:
+            updated:
+              type: array
+              items:
+                type: string
+              example: ["NODE_ENV", "LOG_LEVEL"]
+            total:
+              type: integer
+              example: 15
+
+    # Logs Schemas
+    LogFile:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "combined.log"
+        size:
+          type: integer
+          example: 15420
+        sizeFormatted:
+          type: string
+          example: "15.06 KB"
+        modified:
+          type: string
+          format: date-time
+          example: "2025-08-06T10:30:00.000Z"
+        type:
+          type: string
+          enum: ["log", "webhook", "json"]
+          example: "log"
+
+    LogFilesResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            files:
+              type: array
+              items:
+                $ref: '#/components/schemas/LogFile'
+            total:
+              type: integer
+              example: 15
+
+    LogStatsResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            totalFiles:
+              type: integer
+              example: 15
+            totalSize:
+              type: integer
+              example: 245760
+            totalSizeFormatted:
+              type: string
+              example: "240.00 KB"
+            byType:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                  size:
+                    type: integer
+                  sizeFormatted:
+                    type: string
+            recentActivity:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  modified:
+                    type: string
+                    format: date-time
+                  size:
+                    type: integer
+
+    LogContentResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          oneOf:
+            - type: object
+              properties:
+                filename:
+                  type: string
+                totalLines:
+                  type: integer
+                returnedLines:
+                  type: integer
+                content:
+                  type: array
+                  items:
+                    type: string
+            - type: object
+              description: JSON log file content
+              additionalProperties: true
+
+    LogSearchResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            query:
+              type: string
+              example: "webhook"
+            totalResults:
+              type: integer
+              example: 25
+            results:
+              type: array
+              items:
+                type: object
+                properties:
+                  file:
+                    type: string
+                    example: "combined.log"
+                  line:
+                    type: integer
+                    example: 42
+                  content:
+                    type: string
+                    example: "Webhook request data saved"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+    WebhookLogsResponse:
+      type: object
+      required:
+        - status
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+          properties:
+            date:
+              type: string
+              example: "2025-08-06"
+            files:
+              type: array
+              items:
+                $ref: '#/components/schemas/LogFile'
+            total:
+              type: integer
+              example: 5
+            period:
+              type: string
+              example: "last 24 hours"
+
+    CleanupResponse:
+      type: object
+      required:
+        - status
+        - message
+        - data
+      properties:
+        status:
+          type: string
+          example: "success"
+        message:
+          type: string
+          example: "Log cleanup completed successfully"
+        data:
+          type: object
+          properties:
+            deletedCount:
+              type: integer
+              example: 5
+            deletedSize:
+              type: integer
+              example: 102400
+            deletedSizeFormatted:
+              type: string
+              example: "100.00 KB"
+            remainingFiles:
+              type: integer
+              example: 10
 
     JiraWebhookPayload:
       type: object
@@ -394,6 +1271,47 @@ components:
           description: Comment creation timestamp
           example: "2025-08-06T10:30:00.000Z"
 
+  responses:
+    Unauthorized:
+      description: Unauthorized - API key missing
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "API key required"
+            timestamp: "2025-08-06T10:30:00.000Z"
+
+    Forbidden:
+      description: Forbidden - Invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Invalid API key"
+            timestamp: "2025-08-06T10:30:00.000Z"
+
+    BadRequest:
+      description: Bad Request - Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Request body must be an object with key-value pairs"
+            timestamp: "2025-08-06T10:30:00.000Z"
+
+    ServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Internal server error"
+            timestamp: "2025-08-06T10:30:00.000Z"
+
   securitySchemes:
     JiraWebhook:
       type: apiKey
@@ -408,11 +1326,33 @@ components:
         - HMAC signature verification (when configured)
         - Rate limiting
 
+    AdminApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        Admin API key for accessing configuration and logs management endpoints.
+
+        **Header format**: `X-API-Key: your-admin-api-key`
+
+        **Alternative format**: `Authorization: Bearer your-admin-api-key`
+
+        This key is required for all administrative operations including:
+        - Configuration management
+        - Environment variables management
+        - Logs access and management
+
+        The admin API key is protected and cannot be retrieved or modified via the API.
+
 tags:
   - name: Health
     description: Service health monitoring endpoints
   - name: Webhooks
     description: Jira webhook processing endpoints
+  - name: Configuration
+    description: Application configuration and environment management endpoints
+  - name: Logs
+    description: Log files access and management endpoints
 
 externalDocs:
   description: Project Repository
