@@ -9,7 +9,6 @@
 */
 
 const express = require('express');
-const fs = require('fs').promises;
 const path = require('path');
 const router = express.Router();
 const logger = require('../config/logger');
@@ -26,6 +25,13 @@ router.post('/jira', validateJiraWebhook, async (req, res) => {
       issueType: issue?.fields?.issuetype?.name,
       status: issue?.fields?.status?.name
     });
+
+    // Log the webhook request to file
+    try {
+      await logger.logRequest(req, 'jira-webhook');
+    } catch (logError) {
+      logger.warn('Failed to log webhook request to file, continuing processing', logError);
+    }
 
     // Asynchronous processing of synchronization
     await syncService.handleWebhook(webhookEvent, req.body);
@@ -48,31 +54,9 @@ router.post('/jira', validateJiraWebhook, async (req, res) => {
 router.post('/test', async (req, res) => {
   try {
     const timestamp = new Date().toISOString();
-    const date = new Date();
-    const dateFolder = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
-    const webhookData = {
-      timestamp,
-      headers: req.headers,
-      body: req.body,
-      queryParams: req.query,
-      method: req.method,
-      url: req.url,
-      ip: req.ip
-    };
-
-    // Create date folder if it doesn't exist
-    const dateFolderPath = path.join(__dirname, '../../logs', dateFolder);
-    await fs.mkdir(dateFolderPath, { recursive: true });
-
-    // Create filename with timestamp
-    const filename = `webhook-test-${timestamp.replace(/[:.]/g, '-')}.json`;
-    const logPath = path.join(dateFolderPath, filename);
-
-    // Save webhook data to file
-    await fs.writeFile(logPath, JSON.stringify(webhookData, null, 2), 'utf8');
-
-    logger.info(`Webhook test data saved to: ${dateFolder}/${filename}`);
+    // Use the logger function to save webhook data
+    const logFile = await logger.logRequest(req, 'webhook-test');
 
     res.status(200).json({
       message: 'T.W.I.N Webhooks operational',
@@ -80,17 +64,10 @@ router.post('/test', async (req, res) => {
       received: true,
       bodyType: typeof req.body,
       hasBody: !!req.body,
-      logFile: `${dateFolder}/${filename}`
+      logFile
     });
   } catch (error) {
     logger.error('Error saving webhook test data:', error);
-
-    // Fallback to console if file writing fails
-    console.log('=== WEBHOOK RECEIVED (FALLBACK) ===');
-    console.log('Headers:', req.headers);
-    console.log('Body:', JSON.stringify(req.body, null, 2));
-    console.log('Query params:', req.query);
-    console.log('===================================');
 
     res.status(200).json({
       message: 'T.W.I.N Webhooks operational (with error)',
