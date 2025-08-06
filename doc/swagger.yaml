@@ -22,7 +22,7 @@ info:
 servers:
   - url: http://localhost:3000
     description: Development server
-  - url: https://api.twin.example.com
+  - url: https://devgoblin.me
     description: Production server
 
 paths:
