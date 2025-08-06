@@ -7,11 +7,13 @@ services:
       - NODE_ENV=development
       - DB_HOST=postgres
     volumes:
-      - ./logs:/app/logs
+      # Only mount source code and config files for hot reload
       - ./src:/app/src
       - ./doc:/app/doc
       - ./package.json:/app/package.json
       - ./package-lock.json:/app/package-lock.json
+      # Mount logs as a named volume to persist data without triggering restarts
+      - logs_data:/app/logs
     depends_on:
       - postgres
     restart: unless-stopped
@@ -31,3 +33,4 @@ services:
 
 volumes:
   postgres_data:
+  logs_data:
