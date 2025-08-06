@@ -15,7 +15,6 @@ const morgan = require('morgan');
 const swaggerUi = require('swagger-ui-express');
 const YAML = require('yamljs');
 const path = require('path');
-require('dotenv').config();
 
 const webhookRoutes = require('./routes/webhooks');
 const logger = require('./config/logger');

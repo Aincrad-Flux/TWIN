@@ -8,14 +8,19 @@
  *  description : Server entry point for T.W.I.N application
 */
 
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
 const app = require('./app');
 const logger = require('./config/logger');
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
+  logger.info(`=================== T.W.I.N Server Started ===================`);
   logger.info(`🚀 T.W.I.N démarré sur le port ${PORT}`);
   logger.info(`🏥 Health check: http://localhost:${PORT}/health`);
   logger.info(`📨 Webhooks: http://localhost:${PORT}/webhooks`);
   logger.info(`📚 Documentation API: http://localhost:${PORT}/doc`);
+  logger.info(`===============================================================`);
 });
