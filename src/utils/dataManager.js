@@ -62,3 +62,19 @@ class Comment extends DataManager {
         return new Comment(jsonData);
     }
 }
+
+//* ------------ Log Action Data Manager ------------
+class LogAction extends DataManager {
+  constructor(logData) {
+    super();
+    this.id = logData.id;
+    this.action = logData.action;
+    this.issueId = logData.issueId;
+    this.timestamp = new Date(logData.timestamp);
+    this.details = logData.details || {};
+  }
+
+  static fromJSON(jsonData) {
+    return new LogAction(jsonData);
+  }
+}
