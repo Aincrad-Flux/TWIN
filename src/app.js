@@ -17,6 +17,7 @@ const YAML = require('yamljs');
 const path = require('path');
 
 const webhookRoutes = require('./routes/webhooks');
+const configRoutes = require('./routes/config');
 const logger = require('./config/logger');
 
 const app = express();
@@ -66,6 +67,7 @@ if (swaggerDocument) {
 
 // Routes
 app.use('/webhooks', webhookRoutes);
+app.use('/api/config', configRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
