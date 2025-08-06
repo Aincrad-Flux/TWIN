@@ -14,16 +14,7 @@ const path = require('path');
 const router = express.Router();
 const logger = require('../config/logger');
 const syncService = require('../services/syncService');
-
-// Middleware to validate Jira webhooks
-const validateJiraWebhook = (req, res, next) => {
-  // TODO: Add IP validation, signature, etc.
-  const userAgent = req.get('User-Agent');
-  if (!userAgent || !userAgent.includes('Atlassian')) {
-    logger.warn(`Suspicious webhook received from ${req.ip}`);
-  }
-  next();
-};
+const { validateJiraWebhook } = require('../middleware/jiraWebhookValidation');
 
 // Main endpoint for Jira webhooks
 router.post('/jira', validateJiraWebhook, async (req, res) => {
