@@ -57,6 +57,9 @@ router.post('/jira', validateJiraWebhook, async (req, res) => {
 router.post('/test', async (req, res) => {
   try {
     const timestamp = new Date().toISOString();
+    const date = new Date();
+    const dateFolder = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
     const webhookData = {
       timestamp,
       headers: req.headers,
@@ -67,14 +70,18 @@ router.post('/test', async (req, res) => {
       ip: req.ip
     };
 
+    // Create date folder if it doesn't exist
+    const dateFolderPath = path.join(__dirname, '../../logs', dateFolder);
+    await fs.mkdir(dateFolderPath, { recursive: true });
+
     // Create filename with timestamp
     const filename = `webhook-test-${timestamp.replace(/[:.]/g, '-')}.json`;
-    const logPath = path.join(__dirname, '../../logs', filename);
+    const logPath = path.join(dateFolderPath, filename);
 
     // Save webhook data to file
     await fs.writeFile(logPath, JSON.stringify(webhookData, null, 2), 'utf8');
 
-    logger.info(`Webhook test data saved to: ${filename}`);
+    logger.info(`Webhook test data saved to: ${dateFolder}/${filename}`);
 
     res.status(200).json({
       message: 'T.W.I.N Webhooks operational',
@@ -82,7 +89,7 @@ router.post('/test', async (req, res) => {
       received: true,
       bodyType: typeof req.body,
       hasBody: !!req.body,
-      logFile: filename
+      logFile: `${dateFolder}/${filename}`
     });
   } catch (error) {
     logger.error('Error saving webhook test data:', error);
