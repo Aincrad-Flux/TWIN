@@ -46,7 +46,7 @@ The T.W.I.N API provides the following endpoints:
 
 ### Webhooks
 - `POST /webhooks/jira` - Receive and process Jira webhooks
-- `GET /webhooks/test` - Test webhook connectivity
+- `POST /webhooks/test` - Test webhook connectivity and validation
 
 ## Supported Webhook Events
 
@@ -58,12 +58,20 @@ The service currently handles these Jira webhook events:
 
 ## Authentication
 
-Currently, the service validates Jira webhooks by checking the User-Agent header for "Atlassian" string.
+The service validates Jira webhooks through multiple security layers:
 
-> **Note**: This is a basic validation. For production use, consider implementing:
-> - IP whitelist validation
-> - Webhook signature verification
-> - API key authentication
+1. **User-Agent Validation**: Checks for "Atlassian" in the User-Agent header
+2. **IP Whitelist**: Validates requests from allowed IP addresses (configurable)
+3. **HMAC Signature**: Verifies webhook signature when configured
+
+### Configuration
+Security features can be configured via environment variables:
+- `JIRA_REQUIRE_USER_AGENT=true` - Enable User-Agent validation
+- `JIRA_ALLOWED_IPS=ip1,ip2,ip3` - Comma-separated list of allowed IPs
+- `JIRA_WEBHOOK_SECRET=secret` - HMAC secret for signature validation
+- `JIRA_VALIDATE_SIGNATURE=true` - Enable signature validation
+
+> **Note**: For production environments, all security features should be enabled.
 
 ## Testing the API
 
@@ -74,7 +82,13 @@ curl -X GET http://localhost:3000/health
 
 ### Webhook Test
 ```bash
-curl -X GET http://localhost:3000/webhooks/test
+curl -X POST http://localhost:3000/webhooks/test \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: Atlassian-HttpClient/1.0" \
+  -d '{
+    "test": true,
+    "message": "Testing webhook endpoint"
+  }'
 ```
 
 ### Simulate Jira Webhook
@@ -94,6 +108,116 @@ curl -X POST http://localhost:3000/webhooks/jira \
       }
     }
   }'
+```
+
+## Logging and Monitoring
+
+### Request Logging
+The service automatically logs all webhook requests to JSON files in the `logs/` directory:
+- **Webhook Test Requests**: `logs/YYYY-MM-DD/webhook-test-*.json`
+- **Jira Webhook Requests**: `logs/YYYY-MM-DD/jira-webhook-*.json`
+
+### Log Structure
+```json
+{
+  "timestamp": "2025-08-06T10:30:00.000Z",
+  "method": "POST",
+  "url": "/webhooks/test",
+  "headers": {
+    "user-agent": "Atlassian-HttpClient/1.0",
+    "content-type": "application/json"
+  },
+  "body": {
+    "test": true,
+    "message": "Testing webhook endpoint"
+  },
+  "ip": "127.0.0.1"
+}
+```
+
+### Application Logs
+Application logs are written to:
+- `logs/combined.log` - All log levels
+- `logs/error.log` - Error level only
+- Console output in development mode
+
+## API Endpoints Detail
+
+### Health Check Endpoint
+**GET** `/health`
+
+Returns the current status of the T.W.I.N service.
+
+**Response:**
+```json
+{
+  "status": "OK",
+  "service": "T.W.I.N",
+  "timestamp": "2025-08-06T10:30:00.000Z"
+}
+```
+
+### Jira Webhook Endpoint
+**POST** `/webhooks/jira`
+
+Processes Jira webhook events with full security validation.
+
+**Security Requirements:**
+- Valid User-Agent containing "Atlassian"
+- Source IP in allowed list (if configured)
+- Valid HMAC signature (if configured)
+
+**Response:**
+```json
+{
+  "status": "accepted",
+  "timestamp": "2025-08-06T10:30:00.000Z"
+}
+```
+
+### Test Webhook Endpoint
+**POST** `/webhooks/test`
+
+Tests webhook reception and validation, logs the request for debugging.
+
+**Response:**
+```json
+{
+  "message": "T.W.I.N Webhooks operational",
+  "timestamp": "2025-08-06T10:30:00.000Z",
+  "received": true,
+  "bodyType": "object",
+  "hasBody": true,
+  "logFile": "webhook-test-2025-08-06T10-30-00-000Z.json"
+}
+```
+
+## Error Handling
+
+### Common Error Responses
+
+**401 Unauthorized:**
+```json
+{
+  "error": "Invalid User-Agent",
+  "timestamp": "2025-08-06T10:30:00.000Z"
+}
+```
+
+**404 Not Found:**
+```json
+{
+  "error": "Route not found",
+  "timestamp": "2025-08-06T10:30:00.000Z"
+}
+```
+
+**500 Internal Server Error:**
+```json
+{
+  "error": "Processing error",
+  "timestamp": "2025-08-06T10:30:00.000Z"
+}
 ```
 
 ## Updating the Documentation

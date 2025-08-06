@@ -42,7 +42,7 @@ paths:
               example:
                 status: "OK"
                 service: "T.W.I.N"
-                timestamp: "2025-07-28T10:30:00.000Z"
+                timestamp: "2025-08-06T10:30:00.000Z"
 
   /webhooks/jira:
     post:
@@ -120,7 +120,16 @@ paths:
                 $ref: '#/components/schemas/WebhookResponse'
               example:
                 status: "accepted"
-                timestamp: "2025-07-28T10:30:00.000Z"
+                timestamp: "2025-08-06T10:30:00.000Z"
+        '401':
+          description: Unauthorized - Invalid webhook authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid User-Agent"
+                timestamp: "2025-08-06T10:30:00.000Z"
         '500':
           description: Internal server error during webhook processing
           content:
@@ -129,25 +138,53 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
                 error: "Processing error"
-                timestamp: "2025-07-28T10:30:00.000Z"
+                timestamp: "2025-08-06T10:30:00.000Z"
 
   /webhooks/test:
-    get:
+    post:
       summary: Test webhook connectivity
-      description: Simple endpoint to test if the webhook service is operational
+      description: |
+        Test endpoint that validates webhook processing and logs the request.
+        This endpoint accepts webhook data and logs it for testing purposes while validating the webhook authentication.
       tags:
         - Webhooks
         - Health
+      security:
+        - JiraWebhook: []
+      requestBody:
+        description: Test webhook payload (optional)
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              test: true
+              message: "Testing webhook endpoint"
       responses:
         '200':
-          description: Webhook service is operational
+          description: Webhook service is operational and test data logged
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TestResponse'
               example:
                 message: "T.W.I.N Webhooks operational"
-                timestamp: "2025-07-28T10:30:00.000Z"
+                timestamp: "2025-08-06T10:30:00.000Z"
+                received: true
+                bodyType: "object"
+                hasBody: true
+                logFile: "webhook-test-2025-08-06T10-30-00-000Z.json"
+        '401':
+          description: Unauthorized - Invalid webhook authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Invalid User-Agent"
+                timestamp: "2025-08-06T10:30:00.000Z"
 
 components:
   schemas:
@@ -170,7 +207,7 @@ components:
           type: string
           format: date-time
           description: Timestamp of the health check
-          example: "2025-07-28T10:30:00.000Z"
+          example: "2025-08-06T10:30:00.000Z"
 
     WebhookResponse:
       type: object
@@ -186,13 +223,16 @@ components:
           type: string
           format: date-time
           description: Timestamp of the response
-          example: "2025-07-28T10:30:00.000Z"
+          example: "2025-08-06T10:30:00.000Z"
 
     TestResponse:
       type: object
       required:
         - message
         - timestamp
+        - received
+        - bodyType
+        - hasBody
       properties:
         message:
           type: string
@@ -202,7 +242,23 @@ components:
           type: string
           format: date-time
           description: Timestamp of the response
-          example: "2025-07-28T10:30:00.000Z"
+          example: "2025-08-06T10:30:00.000Z"
+        received:
+          type: boolean
+          description: Whether the request was received successfully
+          example: true
+        bodyType:
+          type: string
+          description: Type of the request body
+          example: "object"
+        hasBody:
+          type: boolean
+          description: Whether the request has a body
+          example: true
+        logFile:
+          type: string
+          description: Name of the log file where the request was saved (optional)
+          example: "webhook-test-2025-08-06T10-30-00-000Z.json"
 
     ErrorResponse:
       type: object
@@ -218,7 +274,7 @@ components:
           type: string
           format: date-time
           description: Timestamp when the error occurred
-          example: "2025-07-28T10:30:00.000Z"
+          example: "2025-08-06T10:30:00.000Z"
 
     JiraWebhookPayload:
       type: object
@@ -336,7 +392,7 @@ components:
           type: string
           format: date-time
           description: Comment creation timestamp
-          example: "2025-07-28T10:30:00.000Z"
+          example: "2025-08-06T10:30:00.000Z"
 
   securitySchemes:
     JiraWebhook:
@@ -346,6 +402,11 @@ components:
       description: |
         Jira webhook authentication is validated by checking the User-Agent header.
         The service expects requests from Atlassian services (User-Agent containing "Atlassian").
+
+        Additional security validations may include:
+        - IP address whitelist validation
+        - HMAC signature verification (when configured)
+        - Rate limiting
 
 tags:
   - name: Health
