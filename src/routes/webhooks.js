@@ -51,7 +51,7 @@ router.post('/jira', validateJiraWebhook, async (req, res) => {
 });
 
 // Test endpoint
-router.post('/test', async (req, res) => {
+router.post('/test', validateJiraWebhook, async (req, res) => {
   try {
     const timestamp = new Date().toISOString();
 

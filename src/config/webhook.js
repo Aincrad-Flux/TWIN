@@ -8,7 +8,7 @@
  *  description : Configuration for webhook security and validation
 */
 
-module.exports = {
+const config = {
   jira: {
     secret: process.env.JIRA_WEBHOOK_SECRET || null,
     validateSignature: process.env.JIRA_VALIDATE_SIGNATURE !== 'false', // true par défaut
@@ -16,3 +16,16 @@ module.exports = {
     requireUserAgent: process.env.JIRA_REQUIRE_USER_AGENT !== 'false' // true par défaut
   }
 };
+
+// Log de débogage pour vérifier le chargement des variables d'environnement
+if (process.env.NODE_ENV === 'development') {
+  console.log('Webhook config loaded:', {
+    hasSecret: !!config.jira.secret,
+    secretLength: config.jira.secret ? config.jira.secret.length : 0,
+    validateSignature: config.jira.validateSignature,
+    requireUserAgent: config.jira.requireUserAgent,
+    allowedIPsCount: config.jira.allowedIPs.length
+  });
+}
+
+module.exports = config;
