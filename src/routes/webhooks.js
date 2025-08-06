@@ -9,6 +9,8 @@
 */
 
 const express = require('express');
+const fs = require('fs').promises;
+const path = require('path');
 const router = express.Router();
 const logger = require('../config/logger');
 const syncService = require('../services/syncService');
@@ -52,12 +54,55 @@ router.post('/jira', validateJiraWebhook, async (req, res) => {
 });
 
 // Test endpoint
-router.get('/test', (req, res) => {
-  res.json({
-    message: 'T.W.I.N Webhooks operational',
-    timestamp: new Date().toISOString(),
-    body: req.body || {}
-  });
+router.post('/test', async (req, res) => {
+  try {
+    const timestamp = new Date().toISOString();
+    const webhookData = {
+      timestamp,
+      headers: req.headers,
+      body: req.body,
+      queryParams: req.query,
+      method: req.method,
+      url: req.url,
+      ip: req.ip
+    };
+
+    // Create filename with timestamp
+    const filename = `webhook-test-${timestamp.replace(/[:.]/g, '-')}.json`;
+    const logPath = path.join(__dirname, '../../logs', filename);
+
+    // Save webhook data to file
+    await fs.writeFile(logPath, JSON.stringify(webhookData, null, 2), 'utf8');
+
+    logger.info(`Webhook test data saved to: ${filename}`);
+
+    res.status(200).json({
+      message: 'T.W.I.N Webhooks operational',
+      timestamp,
+      received: true,
+      bodyType: typeof req.body,
+      hasBody: !!req.body,
+      logFile: filename
+    });
+  } catch (error) {
+    logger.error('Error saving webhook test data:', error);
+
+    // Fallback to console if file writing fails
+    console.log('=== WEBHOOK RECEIVED (FALLBACK) ===');
+    console.log('Headers:', req.headers);
+    console.log('Body:', JSON.stringify(req.body, null, 2));
+    console.log('Query params:', req.query);
+    console.log('===================================');
+
+    res.status(200).json({
+      message: 'T.W.I.N Webhooks operational (with error)',
+      timestamp: new Date().toISOString(),
+      received: true,
+      bodyType: typeof req.body,
+      hasBody: !!req.body,
+      error: 'Log file creation failed'
+    });
+  }
 });
 
 module.exports = router;
