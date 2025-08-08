@@ -1,0 +1,1015 @@
+{
+	"info": {
+		"_postman_id": "twin-api-collection-2025",
+		"name": "T.W.I.N API Collection",
+		"description": "Collection complète pour l'API T.W.I.N (Ticket Workflow Integration Network)\n\nInclut toutes les routes pour :\n- Webhooks Jira\n- Configuration management\n- Logs management\n- Health check\n\nVariables utilisées :\n- {{base_url}} : URL de base de l'API (ex: http://localhost:3000)\n- {{admin_api_key}} : Clé API admin pour l'authentification\n- {{jira_webhook_secret}} : Secret pour la validation HMAC des webhooks Jira",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Get Health Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Vérifie l'état de santé du service T.W.I.N"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints pour vérifier la santé du service"
+		},
+		{
+			"name": "Webhooks",
+			"item": [
+				{
+					"name": "Jira Webhook",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "User-Agent",
+								"value": "Atlassian-HttpClient/1.0"
+							},
+							{
+								"key": "X-Hub-Signature",
+								"value": "sha256={{signature_hash}}",
+								"description": "HMAC signature (optionnel selon configuration)"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"webhookEvent\": \"jira:issue_created\",\n  \"timestamp\": 1690540800000,\n  \"issue\": {\n    \"key\": \"{{issue_key}}\",\n    \"fields\": {\n      \"summary\": \"{{issue_summary}}\",\n      \"issuetype\": {\n        \"name\": \"{{issue_type}}\"\n      },\n      \"status\": {\n        \"name\": \"{{issue_status}}\"\n      },\n      \"assignee\": {\n        \"displayName\": \"{{assignee_name}}\",\n        \"emailAddress\": \"{{assignee_email}}\"\n      },\n      \"reporter\": {\n        \"displayName\": \"{{reporter_name}}\",\n        \"emailAddress\": \"{{reporter_email}}\"\n      },\n      \"priority\": {\n        \"name\": \"{{priority_level}}\"\n      },\n      \"project\": {\n        \"key\": \"{{project_key}}\",\n        \"name\": \"{{project_name}}\"\n      }\n    }\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/webhooks/jira",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"webhooks",
+								"jira"
+							]
+						},
+						"description": "Endpoint principal pour recevoir les webhooks Jira avec validation de sécurité complète"
+					},
+					"response": []
+				},
+				{
+					"name": "Jira Webhook - Issue Updated",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "User-Agent",
+								"value": "Atlassian-HttpClient/1.0"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"webhookEvent\": \"jira:issue_updated\",\n  \"timestamp\": {{$timestamp}},\n  \"issue\": {\n    \"key\": \"{{issue_key}}\",\n    \"fields\": {\n      \"summary\": \"{{issue_summary}} - Updated\",\n      \"issuetype\": {\n        \"name\": \"{{issue_type}}\"\n      },\n      \"status\": {\n        \"name\": \"{{issue_status}}\"\n      },\n      \"updated\": \"{{$isoTimestamp}}\"\n    }\n  },\n  \"changelog\": {\n    \"items\": [\n      {\n        \"field\": \"status\",\n        \"fromString\": \"Open\",\n        \"toString\": \"{{issue_status}}\"\n      }\n    ]\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/webhooks/jira",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"webhooks",
+								"jira"
+							]
+						},
+						"description": "Webhook pour les mises à jour d'issues Jira"
+					},
+					"response": []
+				},
+				{
+					"name": "Jira Webhook - Comment Created",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "User-Agent",
+								"value": "Atlassian-HttpClient/1.0"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"webhookEvent\": \"comment_created\",\n  \"timestamp\": {{$timestamp}},\n  \"issue\": {\n    \"key\": \"{{issue_key}}\",\n    \"fields\": {\n      \"summary\": \"{{issue_summary}}\",\n      \"issuetype\": {\n        \"name\": \"{{issue_type}}\"\n      },\n      \"status\": {\n        \"name\": \"{{issue_status}}\"\n      }\n    }\n  },\n  \"comment\": {\n    \"body\": \"{{comment_body}}\",\n    \"author\": {\n      \"displayName\": \"{{comment_author}}\",\n      \"emailAddress\": \"{{comment_author_email}}\"\n    },\n    \"created\": \"{{$isoTimestamp}}\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/webhooks/jira",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"webhooks",
+								"jira"
+							]
+						},
+						"description": "Webhook pour la création de commentaires sur les issues Jira"
+					},
+					"response": []
+				},
+				{
+					"name": "Test Webhook",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "User-Agent",
+								"value": "Atlassian-HttpClient/1.0"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"test\": true,\n  \"message\": \"{{test_message}}\",\n  \"timestamp\": {{$timestamp}},\n  \"data\": {\n    \"source\": \"postman-test\",\n    \"environment\": \"{{environment}}\",\n    \"version\": \"{{api_version}}\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/webhooks/test",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"webhooks",
+								"test"
+							]
+						},
+						"description": "Endpoint de test pour vérifier la réception et validation des webhooks"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints pour la gestion des webhooks Jira et tests"
+		},
+		{
+			"name": "Configuration Management",
+			"item": [
+				{
+					"name": "Get Complete Configuration",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/config/config",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"config",
+								"config"
+							]
+						},
+						"description": "Récupère la configuration complète de l'application"
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Environment Variables",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/config/environment",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"config",
+								"environment"
+							]
+						},
+						"description": "Récupère toutes les variables d'environnement (sauf les protégées)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Specific Environment Variable",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/config/environment/{{env_variable_name}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"config",
+								"environment",
+								"{{env_variable_name}}"
+							]
+						},
+						"description": "Récupère une variable d'environnement spécifique"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Multiple Environment Variables",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"NODE_ENV\": \"{{environment}}\",\n  \"LOG_LEVEL\": \"{{log_level}}\",\n  \"PORT\": \"{{port}}\",\n  \"DB_HOST\": \"{{db_host}}\",\n  \"DB_PORT\": \"{{db_port}}\",\n  \"DB_NAME\": \"{{db_name}}\",\n  \"JIRA_VALIDATE_SIGNATURE\": \"{{jira_validate_signature}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/config/environment",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"config",
+								"environment"
+							]
+						},
+						"description": "Met à jour plusieurs variables d'environnement à la fois"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Single Environment Variable",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"value\": \"{{env_variable_value}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/config/environment/{{env_variable_name}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"config",
+								"environment",
+								"{{env_variable_name}}"
+							]
+						},
+						"description": "Met à jour une variable d'environnement spécifique"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Environment Variable",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/config/environment/{{env_variable_name}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"config",
+								"environment",
+								"{{env_variable_name}}"
+							]
+						},
+						"description": "Supprime une variable d'environnement"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Protected Variables List",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/config/protected-variables",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"config",
+								"protected-variables"
+							]
+						},
+						"description": "Liste les variables protégées qui ne peuvent pas être modifiées via l'API"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints pour la gestion de la configuration et des variables d'environnement",
+			"auth": {
+				"type": "apikey",
+				"apikey": [
+					{
+						"key": "key",
+						"value": "X-API-Key",
+						"type": "string"
+					},
+					{
+						"key": "value",
+						"value": "{{admin_api_key}}",
+						"type": "string"
+					}
+				]
+			}
+		},
+		{
+			"name": "Logs Management",
+			"item": [
+				{
+					"name": "Get All Log Files",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logs/logs",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs",
+								"logs"
+							]
+						},
+						"description": "Récupère la liste de tous les fichiers de logs disponibles"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Log Statistics",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logs/logs/stats",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs",
+								"logs",
+								"stats"
+							]
+						},
+						"description": "Récupère les statistiques des fichiers de logs"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Specific Log File",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logs/logs/file/{{log_filename}}?lines={{lines_count}}&tail={{tail_mode}}&filter={{filter_keyword}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs",
+								"logs",
+								"file",
+								"{{log_filename}}"
+							],
+							"query": [
+								{
+									"key": "lines",
+									"value": "{{lines_count}}",
+									"description": "Nombre de lignes à récupérer"
+								},
+								{
+									"key": "tail",
+									"value": "{{tail_mode}}",
+									"description": "true pour récupérer les dernières lignes"
+								},
+								{
+									"key": "filter",
+									"value": "{{filter_keyword}}",
+									"description": "Filtre le contenu par mot-clé"
+								}
+							]
+						},
+						"description": "Récupère le contenu d'un fichier de log spécifique avec options de filtrage"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Error Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logs/logs/errors?lines={{lines_count}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs",
+								"logs",
+								"errors"
+							],
+							"query": [
+								{
+									"key": "lines",
+									"value": "{{lines_count}}",
+									"description": "Nombre de lignes à récupérer (défaut: 50)"
+								}
+							]
+						},
+						"description": "Récupère les logs d'erreur récents"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Combined Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logs/logs/combined?lines={{lines_count}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs",
+								"logs",
+								"combined"
+							],
+							"query": [
+								{
+									"key": "lines",
+									"value": "{{lines_count}}",
+									"description": "Nombre de lignes à récupérer (défaut: 100)"
+								}
+							]
+						},
+						"description": "Récupère les logs combinés récents"
+					},
+					"response": []
+				},
+				{
+					"name": "Search in Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logs/logs/search?q={{search_query}}&file={{file_pattern}}&limit={{search_limit}}&case_sensitive={{case_sensitive}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs",
+								"logs",
+								"search"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "{{search_query}}",
+									"description": "Terme à rechercher (requis)"
+								},
+								{
+									"key": "file",
+									"value": "{{file_pattern}}",
+									"description": "Pattern de nom de fichier pour filtrer"
+								},
+								{
+									"key": "limit",
+									"value": "{{search_limit}}",
+									"description": "Nombre maximum de résultats (défaut: 100)"
+								},
+								{
+									"key": "case_sensitive",
+									"value": "{{case_sensitive}}",
+									"description": "Recherche sensible à la casse (défaut: false)"
+								}
+							]
+						},
+						"description": "Recherche dans les fichiers de logs"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Webhook Logs by Date",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logs/logs/webhooks/{{log_date}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs",
+								"logs",
+								"webhooks",
+								"{{log_date}}"
+							]
+						},
+						"description": "Récupère les logs de webhooks pour une date spécifique (format YYYY-MM-DD)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recent Webhook Logs",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logs/logs/webhooks/recent?limit={{webhook_limit}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs",
+								"logs",
+								"webhooks",
+								"recent"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "{{webhook_limit}}",
+									"description": "Nombre maximum de fichiers (défaut: 10)"
+								}
+							]
+						},
+						"description": "Récupère les logs de webhooks récents (dernières 24h)"
+					},
+					"response": []
+				},
+				{
+					"name": "Cleanup Old Logs",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "X-API-Key",
+								"value": "{{admin_api_key}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/logs/logs/cleanup?days={{cleanup_days}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs",
+								"logs",
+								"cleanup"
+							],
+							"query": [
+								{
+									"key": "days",
+									"value": "{{cleanup_days}}",
+									"description": "Nombre de jours à conserver (défaut: 30)"
+								}
+							]
+						},
+						"description": "Nettoie les anciens fichiers de logs"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints pour la gestion et l'accès aux fichiers de logs",
+			"auth": {
+				"type": "apikey",
+				"apikey": [
+					{
+						"key": "key",
+						"value": "X-API-Key",
+						"type": "string"
+					},
+					{
+						"key": "value",
+						"value": "{{admin_api_key}}",
+						"type": "string"
+					}
+				]
+			}
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Générer timestamp automatiquement si non défini",
+					"if (!pm.variables.has('timestamp')) {",
+					"    pm.variables.set('timestamp', Math.floor(Date.now() / 1000));",
+					"}",
+					"",
+					"// Générer ISO timestamp",
+					"pm.variables.set('$isoTimestamp', new Date().toISOString());",
+					"",
+					"// Log des variables pour debug",
+					"console.log('Base URL:', pm.variables.get('base_url'));",
+					"console.log('Admin API Key:', pm.variables.get('admin_api_key') ? 'Set' : 'Not set');"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"description": "URL de base de l'API T.W.I.N",
+			"type": "string"
+		},
+		{
+			"key": "admin_api_key",
+			"value": "your-super-secure-admin-key-here",
+			"description": "Clé API admin pour l'authentification aux endpoints protégés",
+			"type": "string"
+		},
+		{
+			"key": "environment",
+			"value": "development",
+			"description": "Environnement d'exécution (development/production)",
+			"type": "string"
+		},
+		{
+			"key": "api_version",
+			"value": "1.0.0",
+			"description": "Version de l'API",
+			"type": "string"
+		},
+		{
+			"key": "port",
+			"value": "3000",
+			"description": "Port du serveur",
+			"type": "string"
+		},
+		{
+			"key": "log_level",
+			"value": "info",
+			"description": "Niveau de log (debug/info/warn/error)",
+			"type": "string"
+		},
+		{
+			"key": "db_host",
+			"value": "localhost",
+			"description": "Hôte de la base de données",
+			"type": "string"
+		},
+		{
+			"key": "db_port",
+			"value": "5432",
+			"description": "Port de la base de données",
+			"type": "string"
+		},
+		{
+			"key": "db_name",
+			"value": "twin_db",
+			"description": "Nom de la base de données",
+			"type": "string"
+		},
+		{
+			"key": "jira_validate_signature",
+			"value": "true",
+			"description": "Activer la validation HMAC des webhooks Jira",
+			"type": "string"
+		},
+		{
+			"key": "issue_key",
+			"value": "TWIN-123",
+			"description": "Clé de l'issue Jira (ex: PROJ-123)",
+			"type": "string"
+		},
+		{
+			"key": "issue_summary",
+			"value": "Issue de test pour TWIN",
+			"description": "Résumé de l'issue Jira",
+			"type": "string"
+		},
+		{
+			"key": "issue_type",
+			"value": "Bug",
+			"description": "Type d'issue Jira (Bug/Task/Story/etc.)",
+			"type": "string"
+		},
+		{
+			"key": "issue_status",
+			"value": "Open",
+			"description": "Statut de l'issue Jira",
+			"type": "string"
+		},
+		{
+			"key": "assignee_name",
+			"value": "John Doe",
+			"description": "Nom de la personne assignée",
+			"type": "string"
+		},
+		{
+			"key": "assignee_email",
+			"value": "john.doe@company.com",
+			"description": "Email de la personne assignée",
+			"type": "string"
+		},
+		{
+			"key": "reporter_name",
+			"value": "Jane Smith",
+			"description": "Nom du reporter",
+			"type": "string"
+		},
+		{
+			"key": "reporter_email",
+			"value": "jane.smith@company.com",
+			"description": "Email du reporter",
+			"type": "string"
+		},
+		{
+			"key": "priority_level",
+			"value": "Medium",
+			"description": "Niveau de priorité (Low/Medium/High/Critical)",
+			"type": "string"
+		},
+		{
+			"key": "project_key",
+			"value": "TWIN",
+			"description": "Clé du projet Jira",
+			"type": "string"
+		},
+		{
+			"key": "project_name",
+			"value": "T.W.I.N Project",
+			"description": "Nom du projet Jira",
+			"type": "string"
+		},
+		{
+			"key": "comment_body",
+			"value": "Ceci est un commentaire de test",
+			"description": "Contenu du commentaire",
+			"type": "string"
+		},
+		{
+			"key": "comment_author",
+			"value": "Test User",
+			"description": "Auteur du commentaire",
+			"type": "string"
+		},
+		{
+			"key": "comment_author_email",
+			"value": "test.user@company.com",
+			"description": "Email de l'auteur du commentaire",
+			"type": "string"
+		},
+		{
+			"key": "test_message",
+			"value": "Test webhook depuis Postman",
+			"description": "Message pour les tests de webhook",
+			"type": "string"
+		},
+		{
+			"key": "env_variable_name",
+			"value": "NODE_ENV",
+			"description": "Nom de la variable d'environnement à manipuler",
+			"type": "string"
+		},
+		{
+			"key": "env_variable_value",
+			"value": "production",
+			"description": "Valeur de la variable d'environnement",
+			"type": "string"
+		},
+		{
+			"key": "log_filename",
+			"value": "combined.log",
+			"description": "Nom du fichier de log (combined.log, error.log, ou chemin avec date)",
+			"type": "string"
+		},
+		{
+			"key": "lines_count",
+			"value": "50",
+			"description": "Nombre de lignes à récupérer dans les logs",
+			"type": "string"
+		},
+		{
+			"key": "tail_mode",
+			"value": "true",
+			"description": "Mode tail pour récupérer les dernières lignes",
+			"type": "string"
+		},
+		{
+			"key": "filter_keyword",
+			"value": "webhook",
+			"description": "Mot-clé pour filtrer les logs",
+			"type": "string"
+		},
+		{
+			"key": "search_query",
+			"value": "error",
+			"description": "Terme de recherche dans les logs",
+			"type": "string"
+		},
+		{
+			"key": "file_pattern",
+			"value": "combined",
+			"description": "Pattern pour filtrer les fichiers lors de la recherche",
+			"type": "string"
+		},
+		{
+			"key": "search_limit",
+			"value": "100",
+			"description": "Limite du nombre de résultats de recherche",
+			"type": "string"
+		},
+		{
+			"key": "case_sensitive",
+			"value": "false",
+			"description": "Recherche sensible à la casse",
+			"type": "string"
+		},
+		{
+			"key": "log_date",
+			"value": "2025-08-06",
+			"description": "Date pour récupérer les logs (format YYYY-MM-DD)",
+			"type": "string"
+		},
+		{
+			"key": "webhook_limit",
+			"value": "10",
+			"description": "Nombre de logs de webhooks récents à récupérer",
+			"type": "string"
+		},
+		{
+			"key": "cleanup_days",
+			"value": "30",
+			"description": "Nombre de jours de logs à conserver lors du nettoyage",
+			"type": "string"
+		},
+		{
+			"key": "signature_hash",
+			"value": "sha256_calculated_signature",
+			"description": "Hash HMAC pour la validation des webhooks Jira",
+			"type": "string"
+		}
+	]
+}
