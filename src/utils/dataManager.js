@@ -78,3 +78,5 @@ class LogAction extends DataManager {
     return new LogAction(jsonData);
   }
 }
+
+module.exports = { DataManager, Issue, Comment, LogAction };

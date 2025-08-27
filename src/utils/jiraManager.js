@@ -96,3 +96,5 @@ class JiraComment {
     }
 
 }
+
+module.exports = { JiraIssue, JiraComment };

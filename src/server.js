@@ -15,12 +15,16 @@ const app = require('./app');
 const logger = require('./config/logger');
 
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  logger.info(`=================== T.W.I.N Server Started ===================`);
-  logger.info(`🚀 T.W.I.N démarré sur le port ${PORT}`);
-  logger.info(`🏥 Health check: http://localhost:${PORT}/health`);
-  logger.info(`📨 Webhooks: http://localhost:${PORT}/webhooks`);
-  logger.info(`📚 Documentation API: http://localhost:${PORT}/doc`);
-  logger.info(`===============================================================`);
-});
+if (process.argv.includes('--console')) {
+  logger.info('🧪 Mode console interactive utils activé (pas de serveur HTTP)');
+  require('./console');
+} else {
+  app.listen(PORT, () => {
+    logger.info(`=================== T.W.I.N Server Started ===================`);
+    logger.info(`🚀 T.W.I.N démarré sur le port ${PORT}`);
+    logger.info(`🏥 Health check: http://localhost:${PORT}/health`);
+    logger.info(`📨 Webhooks: http://localhost:${PORT}/webhooks`);
+    logger.info(`📚 Documentation API: http://localhost:${PORT}/doc`);
+    logger.info(`===============================================================`);
+  });
+}
