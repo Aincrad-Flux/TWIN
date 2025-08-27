@@ -159,33 +159,87 @@ docker-compose up -d
 docker-compose logs -f twin
 ```
 
+## 📚 API Documentation
+
+### Interactive Swagger Documentation
+Once the server is running, access the interactive API documentation at:
+- **Local Development**: http://localhost:3000/doc
+- **Production**: https://your-domain.com/doc
+
+The Swagger UI provides:
+- Complete API endpoint documentation
+- Interactive testing interface
+- Request/response examples
+- Authentication requirements
+
+### Alternative Documentation Access
+If the integrated Swagger UI is not available, you can:
+
+1. **Use Online Swagger Editor**:
+   - Copy content from `doc/swagger.yaml`
+   - Visit [Swagger Editor](https://editor.swagger.io/)
+   - Paste the content for interactive viewing
+
+2. **Local Swagger UI with Docker**:
+   ```bash
+   docker run -p 8080:8080 -v $(pwd)/doc:/usr/share/nginx/html/swagger \
+     -e SWAGGER_JSON=/swagger/swagger.yaml swaggerapi/swagger-ui
+   ```
+   Access at: http://localhost:8080
+
+For detailed API documentation, see: [API_DOCUMENTATION.md](doc/API_DOCUMENTATION.md)
+
 ## 📊 Configuration
 
 ### Environment Variables
 ```env
 # Server Configuration
 PORT=3000
-NODE_ENV=production
+NODE_ENV=development
+LOG_LEVEL=info
 
-# Database
+# Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=twin
+DB_NAME=twin_db
 DB_USER=twin_user
-DB_PASSWORD=your_password
+DB_PASSWORD=your_secure_password
 
-# Jira Configuration
+# Jira Webhook Security Configuration
+JIRA_WEBHOOK_SECRET=your-webhook-secret-key
+JIRA_VALIDATE_SIGNATURE=true
+JIRA_REQUIRE_USER_AGENT=true
+JIRA_ALLOWED_IPS=185.166.141.115,another.ip.address
+
+# Jira Instance Configuration (Future use)
 INTERNAL_JIRA_URL=https://internal.jira.com
 EXTERNAL_JIRA_URL=https://external.jira.com
 JIRA_USERNAME=your_username
-JIRA_API_TOKEN=your_token
+JIRA_API_TOKEN=your_api_token
 
-# Teams Integration
+# Teams Integration (Future use)
 TEAMS_WEBHOOK_URL=https://outlook.office.com/webhook/...
-
-# Security
-WEBHOOK_SECRET=your_webhook_secret
 ```
+
+### Configuration Details
+
+#### Database Settings
+- `DB_HOST`: PostgreSQL server hostname
+- `DB_PORT`: PostgreSQL server port (default: 5432)
+- `DB_NAME`: Database name for T.W.I.N
+- `DB_USER`: Database username
+- `DB_PASSWORD`: Database password
+
+#### Security Settings
+- `JIRA_WEBHOOK_SECRET`: Secret key for HMAC signature validation
+- `JIRA_VALIDATE_SIGNATURE`: Enable/disable webhook signature validation
+- `JIRA_REQUIRE_USER_AGENT`: Require Atlassian User-Agent header
+- `JIRA_ALLOWED_IPS`: Comma-separated list of allowed IP addresses
+
+#### Application Settings
+- `PORT`: Server port (default: 3000)
+- `NODE_ENV`: Environment mode (development/production)
+- `LOG_LEVEL`: Logging level (error/warn/info/debug)
 
 ### Status Mapping
 Configure status mappings in the database or via the web interface:
@@ -196,14 +250,18 @@ VALUES ('In Progress', 'WIP'), ('Done', 'COMPLETED');
 
 ## 🔧 API Endpoints
 
-### Webhooks
-- `POST /webhooks/jira/external` - External Jira webhook
-- `POST /webhooks/jira/internal` - Internal Jira webhook
+For complete API documentation with interactive testing, visit `/doc` when the server is running.
 
-### Monitoring
-- `GET /health` - Health check
-- `GET /metrics` - Synchronization metrics
-- `GET /logs` - Recent synchronization logs
+### Core Endpoints
+- `GET /health` - Service health check
+- `POST /webhooks/jira` - Jira webhook receiver (secured)
+- `POST /webhooks/test` - Webhook testing endpoint
+
+### Security
+All webhook endpoints require proper authentication:
+- Valid Atlassian User-Agent header
+- IP address whitelist validation (configurable)
+- HMAC signature verification (when configured)
 
 
 ## 📈 Monitoring

@@ -9,19 +9,11 @@
 */
 
 const express = require('express');
+const path = require('path');
 const router = express.Router();
 const logger = require('../config/logger');
 const syncService = require('../services/syncService');
-
-// Middleware to validate Jira webhooks
-const validateJiraWebhook = (req, res, next) => {
-  // TODO: Add IP validation, signature, etc.
-  const userAgent = req.get('User-Agent');
-  if (!userAgent || !userAgent.includes('Atlassian')) {
-    logger.warn(`Suspicious webhook received from ${req.ip}`);
-  }
-  next();
-};
+const { validateJiraWebhook } = require('../middleware/jiraWebhookValidation');
 
 // Main endpoint for Jira webhooks
 router.post('/jira', validateJiraWebhook, async (req, res) => {
@@ -33,6 +25,13 @@ router.post('/jira', validateJiraWebhook, async (req, res) => {
       issueType: issue?.fields?.issuetype?.name,
       status: issue?.fields?.status?.name
     });
+
+    // Log the webhook request to file
+    try {
+      await logger.logRequest(req, 'jira-webhook');
+    } catch (logError) {
+      logger.warn('Failed to log webhook request to file, continuing processing', logError);
+    }
 
     // Asynchronous processing of synchronization
     await syncService.handleWebhook(webhookEvent, req.body);
@@ -52,11 +51,33 @@ router.post('/jira', validateJiraWebhook, async (req, res) => {
 });
 
 // Test endpoint
-router.get('/test', (req, res) => {
-  res.json({
-    message: 'T.W.I.N Webhooks operational',
-    timestamp: new Date().toISOString()
-  });
+router.post('/test', validateJiraWebhook, async (req, res) => {
+  try {
+    const timestamp = new Date().toISOString();
+
+    // Use the logger function to save webhook data
+    const logFile = await logger.logRequest(req, 'webhook-test');
+
+    res.status(200).json({
+      message: 'T.W.I.N Webhooks operational',
+      timestamp,
+      received: true,
+      bodyType: typeof req.body,
+      hasBody: !!req.body,
+      logFile
+    });
+  } catch (error) {
+    logger.error('Error saving webhook test data:', error);
+
+    res.status(200).json({
+      message: 'T.W.I.N Webhooks operational (with error)',
+      timestamp: new Date().toISOString(),
+      received: true,
+      bodyType: typeof req.body,
+      hasBody: !!req.body,
+      error: 'Log file creation failed'
+    });
+  }
 });
 
 module.exports = router;

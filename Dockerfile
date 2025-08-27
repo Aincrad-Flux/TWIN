@@ -1,24 +1,30 @@
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
-# Copy package.json and install dependencies
-COPY package*.json ./
-RUN npm ci --only=production
+# Non-root user for security (create early)
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S twin -u 1001
 
-# Copy source code
+# Copy package.json and install dependencies (including devDependencies for development)
+COPY package*.json ./
+RUN npm ci
+
+# Copy source code and documentation
 COPY src/ ./src/
+COPY doc/ ./doc/
 
 # Create logs directory
 RUN mkdir -p logs
 
+# Change ownership of the app directory to twin user
+RUN chown -R twin:nodejs /app
+
+# Switch to non-root user
+USER twin
+
 # Expose port
 EXPOSE 3000
 
-# Non-root user for security
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S twin -u 1001
-USER twin
-
-# Start application
-CMD ["npm", "start"]
+# Start application in development mode
+CMD ["npm", "run", "dev"]

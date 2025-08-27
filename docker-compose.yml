@@ -3,11 +3,19 @@ services:
     build: .
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=development
       - DB_HOST=postgres
+      - DB_USER=twin_user
+      - DB_PASSWORD=twin_password
     volumes:
       - ./logs:/app/logs
+      - ./src:/app/src
+      - ./doc:/app/doc
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - ./.env:/app/.env
     depends_on:
       - postgres
     restart: unless-stopped
@@ -27,3 +35,4 @@ services:
 
 volumes:
   postgres_data:
+  logs_data:
