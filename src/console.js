@@ -47,7 +47,8 @@ function printHelp() {
   console.log(`\n${color.cyan('Aide Console Utils T.W.I.N')}\n`);
   console.log('Commandes:');
   console.log('  help              Affiche cette aide');
-  console.log('  list              Liste modules / fonctions');
+  console.log('  list              Liste modules / fonctions exportées');
+  console.log('  list <Nom>        Liste les méthodes d\'une classe/fonctions dans tous les modules');
   console.log('  <mod>.<func> ...  Appelle une fonction. Arguments séparés par espaces.');
   console.log('                    Chaque argument est tenté en JSON.parse sinon string.');
   console.log('  exit | quit       Quitter');
@@ -64,6 +65,45 @@ function listFunctions() {
       .filter(k => typeof mod[k] === 'function')
       .sort();
     console.log(`${color.yellow(modName)}: ${fns.join(', ') || '(aucune fonction exportée)'}`);
+  });
+}
+
+function listEntity(name) {
+  const matches = [];
+  for (const [modName, mod] of Object.entries(registry)) {
+    if (mod[name]) {
+      matches.push({ modName, entity: mod[name] });
+    }
+  }
+  if (matches.length === 0) {
+    console.log(color.red(`Aucune entité nommée '${name}' trouvée.`));
+    return;
+  }
+  matches.forEach(({ modName, entity }) => {
+    console.log(color.yellow(`Module ${modName} :: ${name}`));
+    if (typeof entity === 'function') {
+      // Supposé classe ou fonction. Pour classe on liste prototype.
+      const proto = entity.prototype || {};
+      const methods = Object.getOwnPropertyNames(proto)
+        .filter(m => m !== 'constructor' && typeof proto[m] === 'function');
+      if (methods.length) {
+        methods.forEach(m => console.log('  -', m + '()'));
+      } else {
+        console.log('  (aucune méthode d\'instance)');
+      }
+      // Méthodes statiques
+      const staticMethods = Object.getOwnPropertyNames(entity)
+        .filter(k => !['length','name','prototype'].includes(k) && typeof entity[k] === 'function');
+      if (staticMethods.length) {
+        console.log('  Méthodes statiques:');
+        staticMethods.forEach(sm => console.log('    *', sm + '()'));
+      }
+    } else if (entity && typeof entity === 'object') {
+      const keys = Object.keys(entity);
+      keys.forEach(k => console.log('  - propriété:', k));
+    } else {
+      console.log('  (type non inspectable)');
+    }
   });
 }
 
@@ -96,6 +136,7 @@ rl.on('line', async line => {
   if (['exit', 'quit'].includes(trimmed)) { rl.close(); return; }
   if (trimmed === 'help') { printHelp(); rl.prompt(); return; }
   if (trimmed === 'list') { listFunctions(); rl.prompt(); return; }
+  if (trimmed.startsWith('list ')) { listEntity(trimmed.split(/\s+/)[1]); rl.prompt(); return; }
 
   try {
     const output = await invoke(trimmed);
