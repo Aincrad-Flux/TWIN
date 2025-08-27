@@ -29,6 +29,7 @@ let data;
 try { data = require('./utils/dataManager'); } catch { data = {}; }
 
 const registry = { env, logs, jira, data };
+const instances = {}; // stockage des instances utilisateur
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -49,6 +50,10 @@ function printHelp() {
   console.log('  help              Affiche cette aide');
   console.log('  list              Liste modules / fonctions exportées');
   console.log('  list <Nom>        Liste les méthodes d\'une classe/fonctions dans tous les modules');
+  console.log('  new <Classe> [nom] {json?}   Crée une instance');
+  console.log('  objs / instances             Liste les instances');
+  console.log('  call <instance>.methode args...  Appelle méthode instance');
+  console.log('  del <instance>               Supprime une instance');
   console.log('  <mod>.<func> ...  Appelle une fonction. Arguments séparés par espaces.');
   console.log('                    Chaque argument est tenté en JSON.parse sinon string.');
   console.log('  exit | quit       Quitter');
@@ -110,11 +115,34 @@ function listEntity(name) {
 async function invoke(line) {
   const [target, ...argTokens] = line.trim().split(/\s+/);
   if (!target) return;
-  if (!target.includes('.')) throw new Error('Format attendu: module.fonction');
-  const [mod, fn] = target.split('.');
-  if (!registry[mod]) throw new Error(`Module inconnu: ${mod}`);
-  const ref = registry[mod][fn];
-  if (!ref) throw new Error(`Fonction inconnue: ${mod}.${fn}`);
+  if (!target.includes('.')) throw new Error('Format attendu: module.fonction ou Classe.methode');
+  const [lhs, fn] = target.split('.');
+  let ref;
+  if (registry[lhs]) {
+    ref = registry[lhs][fn];
+    if (!ref) throw new Error(`Fonction inconnue: ${lhs}.${fn}`);
+  } else {
+    // essayer classe exportée
+    let foundClass;
+    for (const mod of Object.values(registry)) {
+      if (mod[lhs]) { foundClass = mod[lhs]; break; }
+    }
+    if (!foundClass) throw new Error(`Module ou classe inconnu: ${lhs}`);
+    if (typeof foundClass[fn] === 'function') {
+      ref = foundClass[fn]; // statique
+    } else if (typeof foundClass.prototype?.[fn] === 'function') {
+      // créer instance temporaire auto (best effort)
+      try {
+        const seed = lhs.includes('Comment') ? { id:'tmp', body:'temp', author:'temp', created:new Date().toISOString() } : { key:'TMP-1', id:'tmp', fields:{ issuetype:{name:'Task'}, status:{name:'New'}, summary:'Temp', description:'Temp', project:{name:'Temp'} } };
+        const inst = new foundClass(seed);
+        ref = foundClass.prototype[fn].bind(inst);
+      } catch {
+        throw new Error(`Impossible d'instancier automatiquement ${lhs}. Utilisez new ${lhs} d'abord.`);
+      }
+    } else {
+      throw new Error(`Méthode '${fn}' introuvable sur ${lhs}`);
+    }
+  }
 
   const args = argTokens.map(tok => {
     if (!tok) return tok;
@@ -137,6 +165,43 @@ rl.on('line', async line => {
   if (trimmed === 'help') { printHelp(); rl.prompt(); return; }
   if (trimmed === 'list') { listFunctions(); rl.prompt(); return; }
   if (trimmed.startsWith('list ')) { listEntity(trimmed.split(/\s+/)[1]); rl.prompt(); return; }
+  if (['objs','instances'].includes(trimmed)) { Object.entries(instances).forEach(([n,o])=>console.log(`${n}: ${o.constructor?.name}`)); rl.prompt(); return; }
+  if (trimmed.startsWith('del ')) { const name=trimmed.split(/\s+/)[1]; if(instances[name]) { delete instances[name]; console.log('Instance supprimée:', name);} else console.log('Instance inconnue:', name); rl.prompt(); return; }
+  if (trimmed.startsWith('new ')) {
+    try {
+      const parts = trimmed.split(/\s+/).slice(1);
+      const className = parts.shift();
+      if (!className) throw new Error('Classe requise');
+      let foundClass; for (const mod of Object.values(registry)) { if (mod[className]) { foundClass = mod[className]; break; } }
+      if (!foundClass) throw new Error(`Classe inconnue: ${className}`);
+      let name = parts[0] && !parts[0].startsWith('{') ? parts.shift() : undefined;
+      if (!name) { let i=1; while(instances['obj'+i]) i++; name='obj'+i; }
+      let jsonArg = parts.join(' '); let payload={}; if (jsonArg) { try { payload=JSON.parse(jsonArg);} catch { console.warn('JSON invalide, objet vide.'); } }
+      if (className === 'JiraIssue') {
+        payload = Object.assign({ key:'TMP-1', id:Date.now().toString(), fields:{ issuetype:{name:'Task'}, status:{name:'New'}, summary:'Temp issue', description:'Temp desc', project:{name:'TempProj'} } }, payload);
+      } else if (className === 'JiraComment') {
+        payload = Object.assign({ id:Date.now().toString(), body:'Temp body', author:'Temp', created:new Date().toISOString() }, payload);
+      }
+      const inst = new foundClass(payload);
+      instances[name]=inst;
+      console.log(color.green(`Instance créée: ${name}`));
+    } catch(e) { console.error(color.red('Erreur:'), e.message); }
+    rl.prompt(); return;
+  }
+  if (trimmed.startsWith('call ')) {
+    try {
+      const expr = trimmed.slice(5).trim();
+      if (!expr.includes('.')) throw new Error('Format: call <instance>.<methode> [args...]');
+      const [head, ...rest] = expr.split(/\s+/);
+      const [instName, method] = head.split('.');
+      const obj = instances[instName]; if (!obj) throw new Error(`Instance inconnue: ${instName}`);
+      const fn = obj[method]; if (typeof fn !== 'function') throw new Error(`Méthode inconnue: ${method}`);
+      const args = rest.map(t=>{ try { return JSON.parse(t);} catch { return t.replace(/^"|"$/g,''); } });
+      const out = await fn.apply(obj, args);
+      if (out !== undefined) console.log(color.cyan('Résultat:'), util.inspect(out,{depth:5,colors:true}));
+    } catch(e) { console.error(color.red('Erreur:'), e.message); }
+    rl.prompt(); return;
+  }
 
   try {
     const output = await invoke(trimmed);
