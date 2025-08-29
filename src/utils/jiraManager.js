@@ -11,8 +11,53 @@
 const fs = require('fs');
 const path = require('path');
 const logger = require('../config/logger');
+const manager = require('./envManager.js');
+const { Interface } = require('readline');
 
-//* ------------ Jira Issue ------------
+class JiraInterface {
+  constructor(section) {
+    // Accept only a string
+    if (typeof section !== 'string') {
+      throw new Error('Invalid section: Section must be a string');
+    }
+    this.section = String(section || 'UNKNOWN').toUpperCase();
+    this.url = manager.getEnvVar(`JIRA_${this.section}_URL`);
+    this.api = manager.getEnvVar(`JIRA_${this.section}_API`);
+    this.key = manager.getEnvVar(`JIRA_${this.section}_KEY`);
+
+    logger.info(`Initialized JiraInterface for section: ${this.section}`);
+  }
+
+  async getAllIssues() {
+    logger.info(`Getting all Jira issues for section: ${this.section}`);
+
+    // Generate url
+    const url = `${this.api}/search?jql=project=${this.section}`;
+
+    // Make API call to get all issues
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Basic ${Buffer.from(`${this.key}:`).toString('base64')}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      logger.error(`Failed to fetch Jira issues: ${response.statusText}`);
+      throw new Error(`Failed to fetch Jira issues: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.issues.map(issue => new JiraIssue(issue));
+  }
+
+  static async getAllIssues(section) {
+    const inst = new JiraInterface(section);
+    return inst.getAllIssues();
+  }
+
+}
 
 class JiraIssue {
   constructor(issueData) {
@@ -43,20 +88,7 @@ class JiraIssue {
       // TODO - make logic to delete a Jira issue
       logger.info(`Deleting Jira issue: ${this.key}`);
     }
-
-    getIssue() {
-      // TODO - make logic to get all Jira issues
-      logger.info(`Getting all Jira issues`);
-    }
-
-    getIssueById(issueId) {
-      // TODO - make logic to get a Jira issue by ID
-      logger.info(`Getting Jira issue by ID: ${issueId}`);
-    }
-
 }
-
-//* ------------ Jira Comment ------------
 
 class JiraComment {
   constructor(commentData) {
@@ -97,4 +129,4 @@ class JiraComment {
 
 }
 
-module.exports = { JiraIssue, JiraComment };
+module.exports = { JiraInterface, JiraIssue, JiraComment };
