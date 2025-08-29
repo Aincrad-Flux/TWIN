@@ -169,69 +169,98 @@ rl.on('line', async line => {
   if (trimmed.startsWith('del ')) { const name=trimmed.split(/\s+/)[1]; if(instances[name]) { delete instances[name]; console.log('Instance supprimée:', name);} else console.log('Instance inconnue:', name); rl.prompt(); return; }
   if (trimmed.startsWith('new ')) {
     try {
-      const partsOriginal = trimmed.split(/\s+/).slice(1);
-      const className = partsOriginal.shift();
+      const tokens = trimmed.split(/\s+/).slice(1); // remove 'new'
+      const className = tokens.shift();
       if (!className) throw new Error('Classe requise');
       let foundClass; for (const mod of Object.values(registry)) { if (mod[className]) { foundClass = mod[className]; break; } }
       if (!foundClass) throw new Error(`Classe inconnue: ${className}`);
-      // Working array copy for parsing
-      const parts = [...partsOriginal];
-      let name;
-      let sectionArg; // spécifique JiraInterface
-      let potential1 = parts[0];
-      let potential2 = parts[1];
-      // JiraInterface syntaxes supportées:
-      // new JiraInterface SECTION
-      // new JiraInterface SECTION_JSON(e.g. {"section":"ABC"})
-      // new JiraInterface instanceName SECTION
-      // new JiraInterface instanceName {"section":"ABC"}
-      if (className === 'JiraInterface') {
-        if (!potential1) throw new Error('Section requise');
-        if (potential1.startsWith('{')) {
-          // JSON only: section inside JSON, auto name
-          const jsonOnly = parts.shift();
-          try { const obj = JSON.parse(jsonOnly); sectionArg = obj.section || obj.project || obj.key; } catch { throw new Error('JSON invalide pour JiraInterface'); }
-        } else if (parts.length === 1) {
-          // single token = section
-          sectionArg = parts.shift();
-        } else if (parts.length >= 2 && !potential2.startsWith('{')) {
-          // first = name, second = section
-          name = parts.shift();
-          sectionArg = parts.shift();
-        } else if (parts.length >= 2 && potential2.startsWith('{')) {
-          name = parts.shift();
-          const jsonArgRaw = parts.shift();
-          try { const obj = JSON.parse(jsonArgRaw); sectionArg = obj.section || obj.project || obj.key; } catch { throw new Error('JSON invalide (section)'); }
+
+      // Helper to extract constructor param names
+      function getCtorParams(Cls) {
+        try {
+          const src = Cls.toString();
+          const m = src.match(/constructor\s*\(([^)]*)\)/);
+          if (!m) return [];
+          return m[1].split(',').map(s=>s.trim()).filter(Boolean);
+        } catch { return []; }
+      }
+
+      const ctorParamNames = getCtorParams(foundClass);
+      const ctorArity = foundClass.length; // declared params count (runtime)
+
+      // Detect optional explicit instance name: heuristic -> if remaining tokens > 0 and
+      // more tokens than needed for ctor OR user prefixed name with @
+      let instanceName;
+      if (tokens[0] && (tokens[0].startsWith('@') || (tokens.length > 1 && tokens.length > ctorArity))) {
+        instanceName = tokens.shift().replace(/^@/, '');
+      }
+
+      // Auto name if still undefined
+      if (!instanceName) {
+        let prefix = className.toLowerCase().replace(/interface$/i,'').slice(0,8) || 'obj';
+        let i=1; while(instances[prefix+i]) i++; instanceName = prefix+i;
+      }
+
+      // Remaining raw args
+      let rawArgs = [...tokens];
+
+      // If single JSON object given, parse it
+      let jsonObject = null;
+      if (rawArgs.length === 1 && rawArgs[0].startsWith('{')) {
+        try { jsonObject = JSON.parse(rawArgs[0]); rawArgs = []; } catch { /* ignore */ }
+      }
+
+      // Strategy list: build candidate arg lists to try until one succeeds
+      const candidates = [];
+
+      if (jsonObject) {
+        if (ctorParamNames.length) {
+          candidates.push(ctorParamNames.map(n => jsonObject[n]));
         }
-      } else {
-        name = parts[0] && !parts[0].startsWith('{') ? parts.shift() : undefined;
+        // pass whole object as single param
+        candidates.push([jsonObject]);
       }
-      // Fallback generate name if missing
-      if (!name) {
-        let prefix = className.toLowerCase().replace(/interface$/i,'');
-        if (!prefix) prefix = 'obj';
-        let i=1; while(instances[prefix+i]) i++; name=prefix+i;
+
+      if (rawArgs.length) {
+        // Try raw tokens parsed individually (JSON or string)
+        const parsed = rawArgs.map(t=>{ try { return JSON.parse(t); } catch { return t.replace(/^"|"$/g,''); } });
+        candidates.push(parsed);
+        if (parsed.length === 1) {
+          // also try split JSON if available inside
+          candidates.push([parsed[0]]);
+        }
       }
-      // Remaining tokens considered JSON payload for non-JiraInterface classes
-      let jsonArg = parts.join(' ');
-      let payload={};
-      if (jsonArg && className !== 'JiraInterface') {
-        try { payload=JSON.parse(jsonArg);} catch { console.warn('JSON invalide, objet vide.'); }
-      }
+
+      // Class-specific light defaults (previous hard-coded logic preserved generically)
       if (className === 'JiraIssue') {
-        payload = Object.assign({ key:'TMP-1', id:Date.now().toString(), fields:{ issuetype:{name:'Task'}, status:{name:'New'}, summary:'Temp issue', description:'Temp desc', project:{name:'TempProj'} } }, payload);
+        const base = { key:'TMP-1', id:Date.now().toString(), fields:{ issuetype:{name:'Task'}, status:{name:'New'}, summary:'Temp issue', description:'Temp desc', project:{name:'TempProj'} } };
+        candidates.push([base]);
       } else if (className === 'JiraComment') {
-        payload = Object.assign({ id:Date.now().toString(), body:'Temp body', author:'Temp', created:new Date().toISOString() }, payload);
+        const base = { id:Date.now().toString(), body:'Temp body', author:'Temp', created:new Date().toISOString() };
+        candidates.push([base]);
       }
-      let inst;
-      if (className === 'JiraInterface') {
-        if (!sectionArg) throw new Error('Section non déterminée');
-        inst = new foundClass(sectionArg.replace(/^"|"$/g,''));
-      } else {
-        inst = new foundClass(payload);
+
+      // Last resort: no-arg constructor
+      candidates.push([]);
+
+      let instance;
+      let lastError;
+      for (const args of candidates) {
+        try {
+          instance = new foundClass(...args);
+          break;
+        } catch (e) { lastError = e; }
       }
-      instances[name]=inst;
-      console.log(color.green(`Instance créée: ${name}`));
+
+      if (!instance) {
+        throw new Error(`Echec instanciation automatique. Fournissez les arguments explicites. Dernière erreur: ${lastError?.message}`);
+      }
+
+      instances[instanceName] = instance;
+      console.log(color.green(`Instance créée: ${instanceName}`));
+      if (ctorParamNames.length) {
+        console.log(color.yellow(`(Ctor détecté: ${ctorParamNames.join(', ')})`));
+      }
     } catch(e) { console.error(color.red('Erreur:'), e.message); }
     rl.prompt(); return;
   }
