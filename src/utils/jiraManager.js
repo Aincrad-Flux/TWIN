@@ -12,8 +12,6 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../config/logger');
 const manager = require('./envManager.js');
-const { Interface } = require('readline');
-
 class JiraInterface {
   constructor(section) {
     // Accept only a string
