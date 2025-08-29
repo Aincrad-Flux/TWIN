@@ -169,20 +169,67 @@ rl.on('line', async line => {
   if (trimmed.startsWith('del ')) { const name=trimmed.split(/\s+/)[1]; if(instances[name]) { delete instances[name]; console.log('Instance supprimée:', name);} else console.log('Instance inconnue:', name); rl.prompt(); return; }
   if (trimmed.startsWith('new ')) {
     try {
-      const parts = trimmed.split(/\s+/).slice(1);
-      const className = parts.shift();
+      const partsOriginal = trimmed.split(/\s+/).slice(1);
+      const className = partsOriginal.shift();
       if (!className) throw new Error('Classe requise');
       let foundClass; for (const mod of Object.values(registry)) { if (mod[className]) { foundClass = mod[className]; break; } }
       if (!foundClass) throw new Error(`Classe inconnue: ${className}`);
-      let name = parts[0] && !parts[0].startsWith('{') ? parts.shift() : undefined;
-      if (!name) { let i=1; while(instances['obj'+i]) i++; name='obj'+i; }
-      let jsonArg = parts.join(' '); let payload={}; if (jsonArg) { try { payload=JSON.parse(jsonArg);} catch { console.warn('JSON invalide, objet vide.'); } }
+      // Working array copy for parsing
+      const parts = [...partsOriginal];
+      let name;
+      let sectionArg; // spécifique JiraInterface
+      let potential1 = parts[0];
+      let potential2 = parts[1];
+      // JiraInterface syntaxes supportées:
+      // new JiraInterface SECTION
+      // new JiraInterface SECTION_JSON(e.g. {"section":"ABC"})
+      // new JiraInterface instanceName SECTION
+      // new JiraInterface instanceName {"section":"ABC"}
+      if (className === 'JiraInterface') {
+        if (!potential1) throw new Error('Section requise');
+        if (potential1.startsWith('{')) {
+          // JSON only: section inside JSON, auto name
+          const jsonOnly = parts.shift();
+          try { const obj = JSON.parse(jsonOnly); sectionArg = obj.section || obj.project || obj.key; } catch { throw new Error('JSON invalide pour JiraInterface'); }
+        } else if (parts.length === 1) {
+          // single token = section
+          sectionArg = parts.shift();
+        } else if (parts.length >= 2 && !potential2.startsWith('{')) {
+          // first = name, second = section
+          name = parts.shift();
+          sectionArg = parts.shift();
+        } else if (parts.length >= 2 && potential2.startsWith('{')) {
+          name = parts.shift();
+          const jsonArgRaw = parts.shift();
+          try { const obj = JSON.parse(jsonArgRaw); sectionArg = obj.section || obj.project || obj.key; } catch { throw new Error('JSON invalide (section)'); }
+        }
+      } else {
+        name = parts[0] && !parts[0].startsWith('{') ? parts.shift() : undefined;
+      }
+      // Fallback generate name if missing
+      if (!name) {
+        let prefix = className.toLowerCase().replace(/interface$/i,'');
+        if (!prefix) prefix = 'obj';
+        let i=1; while(instances[prefix+i]) i++; name=prefix+i;
+      }
+      // Remaining tokens considered JSON payload for non-JiraInterface classes
+      let jsonArg = parts.join(' ');
+      let payload={};
+      if (jsonArg && className !== 'JiraInterface') {
+        try { payload=JSON.parse(jsonArg);} catch { console.warn('JSON invalide, objet vide.'); }
+      }
       if (className === 'JiraIssue') {
         payload = Object.assign({ key:'TMP-1', id:Date.now().toString(), fields:{ issuetype:{name:'Task'}, status:{name:'New'}, summary:'Temp issue', description:'Temp desc', project:{name:'TempProj'} } }, payload);
       } else if (className === 'JiraComment') {
         payload = Object.assign({ id:Date.now().toString(), body:'Temp body', author:'Temp', created:new Date().toISOString() }, payload);
       }
-      const inst = new foundClass(payload);
+      let inst;
+      if (className === 'JiraInterface') {
+        if (!sectionArg) throw new Error('Section non déterminée');
+        inst = new foundClass(sectionArg.replace(/^"|"$/g,''));
+      } else {
+        inst = new foundClass(payload);
+      }
       instances[name]=inst;
       console.log(color.green(`Instance créée: ${name}`));
     } catch(e) { console.error(color.red('Erreur:'), e.message); }
