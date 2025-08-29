@@ -292,8 +292,13 @@ rl.on('line', async line => {
       // Detect optional explicit instance name: heuristic -> if remaining tokens > 0 and
       // more tokens than needed for ctor OR user prefixed name with @
       let instanceName;
-      if (tokens[0] && (tokens[0].startsWith('@') || (tokens.length > 1 && tokens.length > ctorArity))) {
+      // Heuristic 1: If first token starts with '@', treat as explicit instance name
+      if (tokens[0] && tokens[0].startsWith('@')) {
         instanceName = tokens.shift().replace(/^@/, '');
+      }
+      // Heuristic 2: If more tokens than constructor arity, treat first token as instance name
+      else if (tokens[0] && tokens.length > ctorArity) {
+        instanceName = tokens.shift();
       }
 
       // Auto name if still undefined
