@@ -73,58 +73,62 @@ function instanceMethods(instName) {
 }
 
 function completer(line) {
-  const trimmed = line.trim();
-  // Case: empty or starting new token
-  if (!trimmed) {
+  // Découpe la ligne en tokens, propose sur le dernier mot
+  const tokens = line.split(/\s+/);
+  const last = tokens[tokens.length - 1] || '';
+  const before = tokens.slice(0, -1).join(' ');
+
+  // Cas vide: propose commandes et modules
+  if (!line.trim()) {
     const suggestions = [...baseCommands, ...Object.keys(registry)];
-    return [suggestions, line];
+    return [suggestions, ''];
   }
 
-  // If user typed 'new ' -> list classes
+  // new <Tab> : propose classes
   if (/^new\s+[^\s]*$/.test(line)) {
-    const after = line.replace(/^new\s+/, '');
+    const after = last;
     const classes = collectClasses().filter(c => c.toLowerCase().startsWith(after.toLowerCase()));
-    return [classes.length ? classes : collectClasses(), line];
+    return [classes.length ? classes : collectClasses(), after];
   }
 
-  // call space -> propose instance names
+  // call <Tab> : propose instances
   if (/^call\s+[^\s]*$/.test(line)) {
-    const after = line.replace(/^call\s+/, '');
+    const after = last;
     const names = Object.keys(instances).filter(n=> n.startsWith(after));
-    return [names.length ? names : Object.keys(instances), line];
+    return [names.length ? names : Object.keys(instances), after];
   }
 
-  // del space -> propose instance names
+  // del <Tab> : propose instances
   if (/^del\s+[^\s]*$/.test(line)) {
-    const after = line.replace(/^del\s+/, '');
+    const after = last;
     const names = Object.keys(instances).filter(n=> n.startsWith(after));
-    return [names.length ? names : Object.keys(instances), line];
+    return [names.length ? names : Object.keys(instances), after];
   }
 
-  // call instance.method partial
+  // call instance.method <Tab>
   if (/^call\s+[^\s]+\.[^\s]*$/.test(line)) {
-    const partial = line.replace(/^call\s+/, '');
+    const partial = last;
     const [instName, methPart=''] = partial.split('.');
     const methods = instanceMethods(instName).filter(m => m.startsWith(`${instName}.${methPart}`));
-    return [methods, line];
+    return [methods, partial];
   }
 
-  // module.function completion (first token only, before space)
-  if (!line.includes(' ')) {
-    // Suggest commands or modules or module.fn
-    if (trimmed.includes('.')) {
-      const [lhs, rhsPart=''] = trimmed.split('.');
+  // module.function <Tab> (premier token)
+  if (tokens.length === 1) {
+    if (last.includes('.')) {
+      const [lhs, rhsPart=''] = last.split('.');
       if (registry[lhs]) {
         const funcs = moduleFunctions(lhs).filter(f => f.toLowerCase().startsWith(`${lhs}.${rhsPart}`.toLowerCase()));
-        return [funcs, line];
+        return [funcs, last];
       }
     } else {
-      const starts = [...baseCommands, ...Object.keys(registry), ...collectClasses()].filter(c=> c.startsWith(trimmed));
-      return [starts, line];
+      const starts = [...baseCommands, ...Object.keys(registry), ...collectClasses()].filter(c=> c.startsWith(last));
+      return [starts, last];
     }
   }
 
-  return [[], line];
+  // Par défaut, aucune suggestion
+  return [[], last];
 }
 
 const rl = readline.createInterface({
