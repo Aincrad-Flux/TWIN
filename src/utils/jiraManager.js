@@ -12,15 +12,16 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../config/logger');
 const manager = require('./envManager.js');
-const { Interface } = require('readline');
-
 class JiraInterface {
   constructor(section) {
-    // Accept only a string
+    // Default to 'UNKNOWN' if section is falsy
+    if (!section) {
+      section = 'UNKNOWN';
+    }
     if (typeof section !== 'string') {
       throw new Error('Invalid section: Section must be a string');
     }
-    this.section = String(section || 'UNKNOWN').toUpperCase();
+    this.section = section.toUpperCase();
     this.url = manager.getEnvVar(`JIRA_${this.section}_URL`);
     this.api = manager.getEnvVar(`JIRA_${this.section}_API`);
     this.key = manager.getEnvVar(`JIRA_${this.section}_KEY`);
