@@ -31,10 +31,107 @@ try { data = require('./utils/dataManager'); } catch { data = {}; }
 const registry = { env, logs, jira, data };
 const instances = {}; // stockage des instances utilisateur
 
+// --- Auto-complétion style zsh (basique) ---------------------------------
+// Fournit propositions pour:
+//  - commandes (help, list, new, call, del, exit, quit, objs, instances)
+//  - modules (env, logs, jira, data)
+//  - fonctions module: env.get / logs.read...
+//  - classes pour 'new '
+//  - instances pour 'call ' et 'del '
+//  - méthodes d'instance après 'call instance.'
+
+const baseCommands = ['help','list','new','call','del','exit','quit','objs','instances'];
+
+function collectClasses() {
+  const set = new Set();
+  for (const mod of Object.values(registry)) {
+    for (const [k,v] of Object.entries(mod)) {
+      if (typeof v === 'function' && v.prototype && Object.getOwnPropertyNames(v.prototype).length > 1) {
+        set.add(k);
+      }
+    }
+  }
+  return Array.from(set).sort();
+}
+
+function moduleFunctions(modName) {
+  const mod = registry[modName];
+  if (!mod) return [];
+  return Object.keys(mod).filter(k=> typeof mod[k] === 'function').map(fn=> `${modName}.${fn}`);
+}
+
+function instanceMethods(instName) {
+  const inst = instances[instName];
+  if (!inst) return [];
+  const protoMethods = new Set();
+  let proto = Object.getPrototypeOf(inst);
+  while (proto && proto !== Object.prototype) {
+    Object.getOwnPropertyNames(proto).forEach(p=> { if (p !== 'constructor' && typeof inst[p] === 'function') protoMethods.add(p); });
+    proto = Object.getPrototypeOf(proto);
+  }
+  return Array.from(protoMethods).sort().map(m=> `${instName}.${m}`);
+}
+
+function completer(line) {
+  const trimmed = line.trim();
+  // Case: empty or starting new token
+  if (!trimmed) {
+    const suggestions = [...baseCommands, ...Object.keys(registry)];
+    return [suggestions, line];
+  }
+
+  // If user typed 'new ' -> list classes
+  if (/^new\s+[^\s]*$/.test(line)) {
+    const after = line.replace(/^new\s+/, '');
+    const classes = collectClasses().filter(c => c.toLowerCase().startsWith(after.toLowerCase()));
+    return [classes.length ? classes : collectClasses(), line];
+  }
+
+  // call space -> propose instance names
+  if (/^call\s+[^\s]*$/.test(line)) {
+    const after = line.replace(/^call\s+/, '');
+    const names = Object.keys(instances).filter(n=> n.startsWith(after));
+    return [names.length ? names : Object.keys(instances), line];
+  }
+
+  // del space -> propose instance names
+  if (/^del\s+[^\s]*$/.test(line)) {
+    const after = line.replace(/^del\s+/, '');
+    const names = Object.keys(instances).filter(n=> n.startsWith(after));
+    return [names.length ? names : Object.keys(instances), line];
+  }
+
+  // call instance.method partial
+  if (/^call\s+[^\s]+\.[^\s]*$/.test(line)) {
+    const partial = line.replace(/^call\s+/, '');
+    const [instName, methPart=''] = partial.split('.');
+    const methods = instanceMethods(instName).filter(m => m.startsWith(`${instName}.${methPart}`));
+    return [methods, line];
+  }
+
+  // module.function completion (first token only, before space)
+  if (!line.includes(' ')) {
+    // Suggest commands or modules or module.fn
+    if (trimmed.includes('.')) {
+      const [lhs, rhsPart=''] = trimmed.split('.');
+      if (registry[lhs]) {
+        const funcs = moduleFunctions(lhs).filter(f => f.toLowerCase().startsWith(`${lhs}.${rhsPart}`.toLowerCase()));
+        return [funcs, line];
+      }
+    } else {
+      const starts = [...baseCommands, ...Object.keys(registry), ...collectClasses()].filter(c=> c.startsWith(trimmed));
+      return [starts, line];
+    }
+  }
+
+  return [[], line];
+}
+
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
-  prompt: 'TWIN> '
+  prompt: 'TWIN> ',
+  completer
 });
 
 const color = {
